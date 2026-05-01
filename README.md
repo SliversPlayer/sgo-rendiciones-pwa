@@ -1,3 +1,9 @@
+## Documentación
+
+- Reglas de desarrollo: docs/dev-rules.md
+- Roadmap: docs/sprints.md
+- Decisiones: docs/decisions.md
+
 # SGO Rendiciones PWA
 
 Base Sprint 1 de una PWA offline-first para gestion local de rendiciones.

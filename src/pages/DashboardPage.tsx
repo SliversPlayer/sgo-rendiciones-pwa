@@ -9,7 +9,11 @@ import { DEMO_USER } from '../utils/demoUser';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  navigateTo: (path: string) => void;
+}
+
+export function DashboardPage({ navigateTo }: DashboardPageProps) {
   const isOnline = useOnlineStatus();
   const { rendiciones, isLoading, error, addRendicion, saveRendicion, removeRendicion } =
     useRendiciones();
@@ -102,6 +106,7 @@ export function DashboardPage() {
               <RendicionCard
                 key={rendicion.id}
                 rendicion={rendicion}
+                onOpen={(item) => navigateTo(`/rendicion/${item.id}`)}
                 onEdit={(item) => {
                   setSelectedRendicion(item);
                   setViewMode('edit');

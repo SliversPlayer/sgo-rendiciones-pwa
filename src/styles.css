@@ -23,6 +23,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -257,6 +258,13 @@ button {
   margin-top: 18px;
 }
 
+.top-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
 .empty-state {
   padding: 24px 18px;
   text-align: center;
@@ -288,6 +296,10 @@ button {
   padding: 20px;
 }
 
+.wide-panel {
+  max-width: 880px;
+}
+
 .rendicion-form {
   display: grid;
   gap: 16px;
@@ -301,6 +313,7 @@ button {
 }
 
 .rendicion-form input,
+.rendicion-form select,
 .rendicion-form textarea {
   width: 100%;
   border: 1px solid #cbd8d4;
@@ -312,6 +325,7 @@ button {
 }
 
 .rendicion-form input:focus,
+.rendicion-form select:focus,
 .rendicion-form textarea:focus {
   border-color: #3f7f76;
   box-shadow: 0 0 0 3px rgba(63, 127, 118, 0.14);
@@ -325,6 +339,138 @@ button {
   margin: 0;
   border-radius: 8px;
   padding: 12px 14px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.adjuntos-fieldset {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.adjuntos-fieldset legend {
+  padding: 0 6px;
+  color: #213b40;
+  font-weight: 800;
+}
+
+.field-help {
+  margin: 0;
+  color: #52616b;
+  font-size: 0.92rem;
+}
+
+.attachment-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.file-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.file-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.attachments-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachments-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdfc;
+}
+
+.attachments-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #1f2933;
+  font-weight: 700;
+}
+
+.button-small {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.detail-summary,
+.gasto-item {
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(18, 52, 59, 0.08);
+}
+
+.detail-summary {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 18px;
+}
+
+.detail-summary h2 {
+  margin: 0;
+  color: #12343b;
+  font-size: 1.25rem;
+}
+
+.gastos-list {
+  display: grid;
+  gap: 12px;
+}
+
+.gasto-item {
+  padding: 16px;
+}
+
+.gasto-main {
+  display: grid;
+  gap: 12px;
+}
+
+.gasto-main h3 {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #17252a;
+  font-size: 1.05rem;
+}
+
+.gasto-main strong {
+  color: #12343b;
+  font-size: 1.2rem;
+}
+
+.compact-actions {
+  margin-top: 14px;
 }
 
 @media (min-width: 720px) {
@@ -355,6 +501,21 @@ button {
   .card-actions,
   .form-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .top-actions,
+  .attachment-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-summary,
+  .gasto-main {
+    grid-template-columns: 1fr auto;
+    align-items: center;
   }
 }
 

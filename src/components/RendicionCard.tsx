@@ -3,11 +3,12 @@ import { formatDisplayDate } from '../utils/date';
 
 interface RendicionCardProps {
   rendicion: Rendicion;
+  onOpen: (rendicion: Rendicion) => void;
   onEdit: (rendicion: Rendicion) => void;
   onDelete: (rendicion: Rendicion) => void;
 }
 
-export function RendicionCard({ rendicion, onEdit, onDelete }: RendicionCardProps) {
+export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: RendicionCardProps) {
   return (
     <article className="rendicion-card">
       <div className="card-header">
@@ -32,6 +33,9 @@ export function RendicionCard({ rendicion, onEdit, onDelete }: RendicionCardProp
       </dl>
 
       <div className="card-actions">
+        <button type="button" className="button button-primary" onClick={() => onOpen(rendicion)}>
+          Ver gastos
+        </button>
         <button type="button" className="button button-secondary" onClick={() => onEdit(rendicion)}>
           Editar
         </button>

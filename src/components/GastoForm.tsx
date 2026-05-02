@@ -13,6 +13,7 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
     adjuntos,
     catalogos,
     isSaving,
+    isProcessingFiles,
     formError,
     canAddAdjuntos,
     totalAdjuntosLabel,
@@ -175,8 +176,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <button type="button" className="button button-secondary" onClick={onCancel}>
             Cancelar
           </button>
-          <button type="submit" className="button button-primary" disabled={isSaving}>
-            {isSaving ? 'Guardando...' : 'Guardar gasto'}
+          <button
+            type="submit"
+            className="button button-primary"
+            disabled={isSaving || isProcessingFiles}
+          >
+            {isProcessingFiles ? 'Procesando...' : isSaving ? 'Guardando...' : 'Guardar gasto'}
           </button>
         </div>
       </form>

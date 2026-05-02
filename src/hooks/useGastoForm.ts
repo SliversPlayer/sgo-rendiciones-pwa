@@ -1,10 +1,15 @@
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { centrosCosto, tiposDocumento, tiposGasto } from '../services/catalogos';
 import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gasto';
+import {
+  compressImageIfNeeded,
+  getMaxAttachmentSizeBytes,
+  isCompressibleImage,
+} from '../utils/imageCompression';
 import { createId } from '../utils/id';
 
 const MAX_ADJUNTOS = 2;
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = getMaxAttachmentSizeBytes();
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 
 interface AdjuntoDraft extends AdjuntoInput {
@@ -67,10 +72,11 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
     getInitialAdjuntos(initialGasto),
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const remainingAdjuntos = MAX_ADJUNTOS - adjuntos.length;
-  const canAddAdjuntos = remainingAdjuntos > 0;
+  const canAddAdjuntos = remainingAdjuntos > 0 && !isProcessingFiles;
 
   const totalAdjuntosLabel = useMemo(
     () => `${adjuntos.length}/${MAX_ADJUNTOS} adjuntos`,
@@ -81,12 +87,44 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
     setData((current) => ({ ...current, [field]: value }));
   }
 
-  function addFiles(files: FileList | null) {
-    if (!files || files.length === 0) {
+  async function buildAdjuntoDraft(file: File): Promise<AdjuntoDraft> {
+    if (file.type === 'application/pdf') {
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`El PDF "${file.name}" supera el limite de 5 MB.`);
+      }
+
+      return {
+        id: createId(),
+        archivo: file,
+        nombre: file.name,
+        tipo: file.type,
+        size: file.size,
+      };
+    }
+
+    if (isCompressibleImage(file)) {
+      const compressed = await compressImageIfNeeded(file);
+
+      return {
+        id: createId(),
+        archivo: compressed.archivo,
+        nombre: compressed.nombre,
+        tipo: compressed.tipo,
+        size: compressed.archivo.size,
+      };
+    }
+
+    throw new Error('Solo se permiten imagenes JPEG, PNG o archivos PDF.');
+  }
+
+  async function addFiles(selectedFiles: File[]) {
+    if (selectedFiles.length === 0) {
       return;
     }
 
-    const selectedFiles = Array.from(files);
+    if (isProcessingFiles) {
+      return;
+    }
 
     if (selectedFiles.length > remainingAdjuntos) {
       setFormError('Cada gasto puede tener maximo 2 adjuntos.');
@@ -99,28 +137,28 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       return;
     }
 
-    const oversized = selectedFiles.find((file) => file.size > MAX_FILE_SIZE);
-    if (oversized) {
-      setFormError('Cada adjunto debe pesar 5MB o menos.');
-      return;
+    try {
+      setIsProcessingFiles(true);
+      setFormError(null);
+      const processedFiles = await Promise.all(selectedFiles.map(buildAdjuntoDraft));
+      setAdjuntos((current) => [...current, ...processedFiles]);
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo preparar el adjunto. Intenta nuevamente.',
+      );
+    } finally {
+      setIsProcessingFiles(false);
     }
-
-    setAdjuntos((current) => [
-      ...current,
-      ...selectedFiles.map((file) => ({
-        id: createId(),
-        archivo: file,
-        nombre: file.name,
-        tipo: file.type,
-        size: file.size,
-      })),
-    ]);
-    setFormError(null);
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    addFiles(event.target.files);
-    event.target.value = '';
+    const selectedFiles = event.currentTarget.files
+      ? Array.from(event.currentTarget.files)
+      : [];
+    event.currentTarget.value = '';
+    void addFiles(selectedFiles);
   }
 
   function removeAdjunto(id: string) {
@@ -164,6 +202,10 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       return 'Cada gasto puede tener maximo 2 adjuntos.';
     }
 
+    if (isProcessingFiles) {
+      return 'Espera a que termine la compresion de los adjuntos.';
+    }
+
     return null;
   }
 
@@ -199,6 +241,7 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       tiposGasto,
     },
     isSaving,
+    isProcessingFiles,
     formError,
     canAddAdjuntos,
     totalAdjuntosLabel,

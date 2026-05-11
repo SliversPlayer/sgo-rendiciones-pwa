@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { RendicionCard } from '../components/RendicionCard';
 import { RendicionForm } from '../components/RendicionForm';
+import { useAuth } from '../hooks/useAuth';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useRendiciones } from '../hooks/useRendiciones';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
-import { DEMO_USER } from '../utils/demoUser';
+import { isRendicionEditable } from '../utils/rendicionStatus';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -15,6 +16,7 @@ interface DashboardPageProps {
 
 export function DashboardPage({ navigateTo }: DashboardPageProps) {
   const isOnline = useOnlineStatus();
+  const { userProfile, logout } = useAuth();
   const { rendiciones, isLoading, error, addRendicion, saveRendicion, removeRendicion } =
     useRendiciones();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -31,7 +33,7 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
   };
 
   const handleEdit = async (data: RendicionFormData) => {
-    if (!selectedRendicion) {
+    if (!selectedRendicion || !isRendicionEditable(selectedRendicion)) {
       return;
     }
 
@@ -40,6 +42,10 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
   };
 
   const handleDelete = async (rendicion: Rendicion) => {
+    if (!isRendicionEditable(rendicion)) {
+      return;
+    }
+
     const shouldDelete = window.confirm(`Eliminar la rendicion "${rendicion.titulo}"?`);
 
     if (shouldDelete) {
@@ -57,10 +63,15 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
             Base offline-first para gestionar rendiciones locales en borrador.
           </p>
           <p className="demo-user">
-            {DEMO_USER.nombre} · {DEMO_USER.email}
+            {userProfile?.nombre ?? 'Usuario'} - {userProfile?.email}
           </p>
         </div>
-        <ConnectionStatus isOnline={isOnline} />
+        <div className="header-actions">
+          <ConnectionStatus isOnline={isOnline} />
+          <button type="button" className="button button-secondary" onClick={() => void logout()}>
+            Cerrar sesion
+          </button>
+        </div>
       </header>
 
       {viewMode === 'create' ? (
@@ -108,6 +119,10 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
                 rendicion={rendicion}
                 onOpen={(item) => navigateTo(`/rendicion/${item.id}`)}
                 onEdit={(item) => {
+                  if (!isRendicionEditable(item)) {
+                    return;
+                  }
+
                   setSelectedRendicion(item);
                   setViewMode('edit');
                 }}

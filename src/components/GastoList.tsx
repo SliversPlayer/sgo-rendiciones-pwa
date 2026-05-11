@@ -4,6 +4,7 @@ interface GastoListProps {
   gastos: Gasto[];
   onEdit: (gasto: Gasto) => void;
   onDelete: (gasto: Gasto) => void;
+  readOnly?: boolean;
 }
 
 function formatMonto(value: number): string {
@@ -14,7 +15,7 @@ function formatMonto(value: number): string {
   }).format(value);
 }
 
-export function GastoList({ gastos, onEdit, onDelete }: GastoListProps) {
+export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoListProps) {
   if (gastos.length === 0) {
     return (
       <div className="empty-state">
@@ -37,22 +38,24 @@ export function GastoList({ gastos, onEdit, onDelete }: GastoListProps) {
             <strong>{formatMonto(gasto.monto)}</strong>
           </div>
 
-          <div className="card-actions compact-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => onEdit(gasto)}
-            >
-              Editar
-            </button>
-            <button
-              type="button"
-              className="button button-danger"
-              onClick={() => onDelete(gasto)}
-            >
-              Eliminar
-            </button>
-          </div>
+          {!readOnly ? (
+            <div className="card-actions compact-actions">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => onEdit(gasto)}
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={() => onDelete(gasto)}
+              >
+                Eliminar
+              </button>
+            </div>
+          ) : null}
         </article>
       ))}
     </div>

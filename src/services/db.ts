@@ -19,6 +19,25 @@ class SgoRendicionesDatabase extends Dexie {
       gastos: 'id, rendicion_id, fecha',
       adjuntos: 'id, gasto_id',
     });
+
+    this.version(3)
+      .stores({
+        rendiciones:
+          'id, usuario_id, estado, sync_status, fecha_creacion, fecha_actualizacion, fecha_envio',
+        gastos: 'id, rendicion_id, fecha',
+        adjuntos: 'id, gasto_id',
+      })
+      .upgrade(async (transaction) => {
+        await transaction.table<Rendicion, string>('rendiciones').toCollection().modify((rendicion) => {
+          if (!rendicion.estado) {
+            rendicion.estado = 'BORRADOR';
+          }
+
+          if (!rendicion.sync_status) {
+            rendicion.sync_status = 'LOCAL';
+          }
+        });
+      });
   }
 }
 

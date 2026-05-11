@@ -3,6 +3,7 @@ import { createGasto, getGastoConAdjuntos, updateGasto } from '../services/gasto
 import { getRendicionById } from '../services/rendicionesService';
 import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gasto';
 import type { Rendicion } from '../types/rendicion';
+import { isRendicionEditable } from '../utils/rendicionStatus';
 
 export function useGastoEditor(rendicionId: string, gastoId?: string) {
   const [rendicion, setRendicion] = useState<Rendicion | null>(null);
@@ -24,6 +25,8 @@ export function useGastoEditor(rendicionId: string, gastoId?: string) {
 
       if (!storedRendicion || (gastoId && (!storedGasto || !belongsToRendicion))) {
         setError('No se encontro la informacion local solicitada.');
+      } else if (!isRendicionEditable(storedRendicion)) {
+        setError('Esta rendicion ya fue enviada y esta bloqueada para edicion.');
       }
     } catch {
       setError('No se pudo cargar el formulario de gasto.');
@@ -38,6 +41,10 @@ export function useGastoEditor(rendicionId: string, gastoId?: string) {
   }, [loadEditor]);
 
   const saveGasto = async (data: GastoFormData, adjuntos: AdjuntoInput[]) => {
+    if (!rendicion || !isRendicionEditable(rendicion)) {
+      throw new Error('Esta rendicion ya fue enviada y esta bloqueada para edicion.');
+    }
+
     if (gastoId) {
       await updateGasto(gastoId, data, adjuntos);
       return;
@@ -52,6 +59,7 @@ export function useGastoEditor(rendicionId: string, gastoId?: string) {
     isEditing,
     isLoading,
     error,
+    isEditable: isRendicionEditable(rendicion),
     saveGasto,
   };
 }

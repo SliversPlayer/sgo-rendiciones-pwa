@@ -3,6 +3,7 @@ import { deleteGasto, getGastosByRendicion } from '../services/gastosService';
 import { getRendicionById } from '../services/rendicionesService';
 import type { Gasto } from '../types/gasto';
 import type { Rendicion } from '../types/rendicion';
+import { isRendicionEditable } from '../utils/rendicionStatus';
 
 export function useRendicionDetalle(rendicionId: string) {
   const [rendicion, setRendicion] = useState<Rendicion | null>(null);
@@ -33,8 +34,13 @@ export function useRendicionDetalle(rendicionId: string) {
   }, [loadDetalle]);
 
   const removeGasto = async (gasto: Gasto) => {
-    await deleteGasto(gasto);
-    setGastos((current) => current.filter((item) => item.id !== gasto.id));
+    try {
+      setError(null);
+      await deleteGasto(gasto);
+      setGastos((current) => current.filter((item) => item.id !== gasto.id));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo eliminar el gasto.');
+    }
   };
 
   return {
@@ -43,6 +49,7 @@ export function useRendicionDetalle(rendicionId: string) {
     isLoading,
     error,
     isRendicionValida: gastos.length > 0,
+    isEditable: isRendicionEditable(rendicion),
     removeGasto,
     reload: loadDetalle,
   };

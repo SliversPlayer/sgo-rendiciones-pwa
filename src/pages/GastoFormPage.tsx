@@ -11,7 +11,7 @@ interface GastoFormPageProps {
 
 export function GastoFormPage({ rendicionId, gastoId, navigateTo }: GastoFormPageProps) {
   const isOnline = useOnlineStatus();
-  const { rendicion, initialGasto, isEditing, isLoading, error, saveGasto } =
+  const { rendicion, initialGasto, isEditing, isLoading, error, isEditable, saveGasto } =
     useGastoEditor(rendicionId, gastoId);
 
   const goToDetalle = () => navigateTo(`/rendicion/${rendicionId}`);
@@ -36,7 +36,19 @@ export function GastoFormPage({ rendicionId, gastoId, navigateTo }: GastoFormPag
       {error ? <p className="notice notice-error">{error}</p> : null}
       {isLoading ? <p className="notice">Cargando formulario...</p> : null}
 
-      {!isLoading && rendicion && (!isEditing || initialGasto) ? (
+      {!isLoading && rendicion && !isEditable ? (
+        <div className="empty-state">
+          <h3>Rendicion bloqueada</h3>
+          <p>Esta rendicion ya fue enviada y esta bloqueada para edicion.</p>
+          <div className="form-actions">
+            <button type="button" className="button button-secondary" onClick={goToDetalle}>
+              Volver
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {!isLoading && rendicion && isEditable && (!isEditing || initialGasto) ? (
         <GastoForm initialGasto={initialGasto} onSubmit={handleSubmit} onCancel={goToDetalle} />
       ) : null}
 

@@ -35,11 +35,14 @@ function buildGasto(
     glosa: data.glosa.trim(),
     centro_costo_id: centroCosto.id,
     centro_costo_nombre: centroCosto.nombre,
+    centro_costo_codigo: centroCosto.codigo,
     tipo_documento_id: tipoDocumento.id,
     tipo_documento_nombre: tipoDocumento.nombre,
+    tipo_documento_codigo: tipoDocumento.codigo,
     numero_documento: data.numero_documento.trim(),
     tipo_gasto_id: tipoGasto.id,
     tipo_gasto_nombre: tipoGasto.nombre,
+    tipo_gasto_codigo: tipoGasto.codigo,
     monto: Number(data.monto),
   };
 }
@@ -58,6 +61,18 @@ async function touchRendicion(rendicionId: string): Promise<void> {
   await rendicionesTable.update(rendicionId, {
     fecha_actualizacion: nowIso(),
   });
+}
+
+async function assertRendicionEditable(rendicionId: string): Promise<void> {
+  const rendicion = await rendicionesTable.get(rendicionId);
+
+  if (!rendicion) {
+    throw new Error('Rendicion no encontrada.');
+  }
+
+  if (!['BORRADOR', 'ERROR', 'RECHAZADA'].includes(rendicion.estado)) {
+    throw new Error('Esta rendicion ya fue enviada y esta bloqueada para edicion.');
+  }
 }
 
 export async function getGastosByRendicion(rendicionId: string): Promise<Gasto[]> {
@@ -81,6 +96,8 @@ export async function createGasto(
   data: GastoFormData,
   adjuntos: AdjuntoInput[],
 ): Promise<GastoConAdjuntos> {
+  await assertRendicionEditable(rendicionId);
+
   const gasto = buildGasto(rendicionId, data);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);
 
@@ -104,6 +121,8 @@ export async function updateGasto(
     throw new Error('Gasto no encontrado.');
   }
 
+  await assertRendicionEditable(current.rendicion_id);
+
   const gasto = buildGasto(current.rendicion_id, data, current);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);
 
@@ -118,6 +137,8 @@ export async function updateGasto(
 }
 
 export async function deleteGasto(gasto: Gasto): Promise<void> {
+  await assertRendicionEditable(gasto.rendicion_id);
+
   await db.transaction('rw', rendicionesTable, gastosTable, adjuntosTable, async () => {
     await adjuntosTable.where('gasto_id').equals(gasto.id).delete();
     await gastosTable.delete(gasto.id);

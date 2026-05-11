@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from './hooks/useAuth';
 import { DashboardPage } from './pages/DashboardPage';
 import { GastoFormPage } from './pages/GastoFormPage';
+import { LoginPage } from './pages/LoginPage';
 import { RendicionDetallePage } from './pages/RendicionDetallePage';
 
 export function App() {
+  const { currentUser, loading } = useAuth();
   const [path, setPath] = useState(() => window.location.pathname);
 
   useEffect(() => {
@@ -18,6 +21,18 @@ export function App() {
     window.history.pushState(null, '', nextPath);
     setPath(nextPath);
   };
+
+  if (loading) {
+    return (
+      <main className="app-shell">
+        <p className="notice">Cargando sesion...</p>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginPage />;
+  }
 
   if (route.name === 'rendicionDetalle') {
     return <RendicionDetallePage rendicionId={route.rendicionId} navigateTo={navigateTo} />;

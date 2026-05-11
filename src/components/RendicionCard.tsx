@@ -1,5 +1,10 @@
 import type { Rendicion } from '../types/rendicion';
 import { formatDisplayDate } from '../utils/date';
+import {
+  getEstadoLabel,
+  getSyncStatusLabel,
+  isRendicionEditable,
+} from '../utils/rendicionStatus';
 
 interface RendicionCardProps {
   rendicion: Rendicion;
@@ -9,6 +14,8 @@ interface RendicionCardProps {
 }
 
 export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: RendicionCardProps) {
+  const isEditable = isRendicionEditable(rendicion);
+
   return (
     <article className="rendicion-card">
       <div className="card-header">
@@ -16,7 +23,9 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
           <p className="card-kicker">Rendicion</p>
           <h2>{rendicion.titulo}</h2>
         </div>
-        <span className="status-pill">{rendicion.estado}</span>
+        <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
+          {getEstadoLabel(rendicion.estado)}
+        </span>
       </div>
 
       {rendicion.glosa_grupo ? (
@@ -30,16 +39,30 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
           <dt>Creada</dt>
           <dd>{formatDisplayDate(rendicion.fecha_creacion)}</dd>
         </div>
+        <div>
+          <dt>Sync</dt>
+          <dd>{getSyncStatusLabel(rendicion.sync_status ?? 'LOCAL')}</dd>
+        </div>
       </dl>
 
       <div className="card-actions">
         <button type="button" className="button button-primary" onClick={() => onOpen(rendicion)}>
           Ver gastos
         </button>
-        <button type="button" className="button button-secondary" onClick={() => onEdit(rendicion)}>
+        <button
+          type="button"
+          className="button button-secondary"
+          onClick={() => onEdit(rendicion)}
+          disabled={!isEditable}
+        >
           Editar
         </button>
-        <button type="button" className="button button-danger" onClick={() => onDelete(rendicion)}>
+        <button
+          type="button"
+          className="button button-danger"
+          onClick={() => onDelete(rendicion)}
+          disabled={!isEditable}
+        >
           Eliminar
         </button>
       </div>

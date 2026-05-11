@@ -45,6 +45,12 @@ button {
   padding: 24px 0 28px;
 }
 
+.header-actions {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
 .app-header h1 {
   margin: 0;
   color: #12343b;
@@ -82,8 +88,9 @@ button {
 
 .connection-status {
   display: inline-flex;
-  width: fit-content;
+  width: 100%;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 10px 14px;
   border: 1px solid #d9e2df;
@@ -218,6 +225,24 @@ button {
   font-weight: 900;
 }
 
+.status-enviada,
+.status-aprobada {
+  background: #e6f4ea;
+  color: #17623a;
+}
+
+.status-enviando,
+.status-pendiente_envio {
+  background: #e8f1ff;
+  color: #174a8b;
+}
+
+.status-error,
+.status-rechazada {
+  background: #f8d7da;
+  color: #8a1c25;
+}
+
 .card-glosa {
   overflow-wrap: anywhere;
   margin: 14px 0;
@@ -230,6 +255,8 @@ button {
 }
 
 .card-meta {
+  display: grid;
+  gap: 10px;
   margin: 0;
 }
 
@@ -289,6 +316,29 @@ button {
 .form-error {
   color: #8a1c25;
   background: #f8d7da;
+}
+
+.notice-success {
+  color: #17623a;
+  background: #e6f4ea;
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  align-items: center;
+}
+
+.auth-panel {
+  width: min(100%, 460px);
+  margin: 0 auto;
+}
+
+.auth-panel h1 {
+  margin: 0;
+  color: #12343b;
+  font-size: 2rem;
+  line-height: 1.1;
 }
 
 .form-panel {
@@ -482,6 +532,10 @@ button {
     flex-direction: row;
     align-items: flex-start;
     justify-content: space-between;
+  }
+
+  .header-actions {
+    min-width: 180px;
   }
 
   .app-header h1 {

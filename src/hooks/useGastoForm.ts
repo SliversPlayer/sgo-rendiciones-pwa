@@ -3,14 +3,17 @@ import { centrosCosto, tiposDocumento, tiposGasto } from '../services/catalogos'
 import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gasto';
 import {
   compressImageIfNeeded,
-  getMaxAttachmentSizeBytes,
   isCompressibleImage,
 } from '../utils/imageCompression';
+import {
+  MAX_ADJUNTOS_PER_GASTO,
+  PDF_MIME_TYPE,
+  validatePdfSize,
+} from '../utils/attachmentValidation';
 import { createId } from '../utils/id';
 
-const MAX_ADJUNTOS = 2;
-const MAX_FILE_SIZE = getMaxAttachmentSizeBytes();
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+const MAX_ADJUNTOS = MAX_ADJUNTOS_PER_GASTO;
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', PDF_MIME_TYPE];
 
 interface AdjuntoDraft extends AdjuntoInput {
   id: string;
@@ -88,10 +91,8 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
   }
 
   async function buildAdjuntoDraft(file: File): Promise<AdjuntoDraft> {
-    if (file.type === 'application/pdf') {
-      if (file.size > MAX_FILE_SIZE) {
-        throw new Error(`El PDF "${file.name}" supera el limite de 5 MB.`);
-      }
+    if (file.type === PDF_MIME_TYPE) {
+      validatePdfSize(file, file.name);
 
       return {
         id: createId(),
@@ -225,8 +226,12 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
         data,
         adjuntos.map(({ archivo, nombre, tipo }) => ({ archivo, nombre, tipo })),
       );
-    } catch {
-      setFormError('No se pudo guardar el gasto. Intenta nuevamente.');
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo guardar el gasto. Intenta nuevamente.',
+      );
     } finally {
       setIsSaving(false);
     }

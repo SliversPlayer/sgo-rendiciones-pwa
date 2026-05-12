@@ -12,6 +12,11 @@ import type {
   GastoConAdjuntos,
   GastoFormData,
 } from '../types/gasto';
+import {
+  MAX_ADJUNTOS_PER_GASTO,
+  PDF_MIME_TYPE,
+  validatePdfSize,
+} from '../utils/attachmentValidation';
 import { nowIso } from '../utils/date';
 import { createId } from '../utils/id';
 
@@ -57,6 +62,18 @@ function buildAdjuntos(gastoId: string, files: AdjuntoInput[]): Adjunto[] {
   }));
 }
 
+function validateAdjuntos(files: AdjuntoInput[]): void {
+  if (files.length > MAX_ADJUNTOS_PER_GASTO) {
+    throw new Error('Cada gasto puede tener maximo 2 adjuntos.');
+  }
+
+  files.forEach((file) => {
+    if (file.tipo === PDF_MIME_TYPE || file.archivo.type === PDF_MIME_TYPE) {
+      validatePdfSize(file.archivo, file.nombre);
+    }
+  });
+}
+
 async function touchRendicion(rendicionId: string): Promise<void> {
   await rendicionesTable.update(rendicionId, {
     fecha_actualizacion: nowIso(),
@@ -97,6 +114,7 @@ export async function createGasto(
   adjuntos: AdjuntoInput[],
 ): Promise<GastoConAdjuntos> {
   await assertRendicionEditable(rendicionId);
+  validateAdjuntos(adjuntos);
 
   const gasto = buildGasto(rendicionId, data);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);
@@ -122,6 +140,7 @@ export async function updateGasto(
   }
 
   await assertRendicionEditable(current.rendicion_id);
+  validateAdjuntos(adjuntos);
 
   const gasto = buildGasto(current.rendicion_id, data, current);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);

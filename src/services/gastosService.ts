@@ -117,6 +117,19 @@ export async function getGastoConAdjuntos(gastoId: string): Promise<GastoConAdju
   return { gasto, adjuntos };
 }
 
+export async function getGastosConAdjuntosByRendicion(
+  rendicionId: string,
+): Promise<GastoConAdjuntos[]> {
+  const gastos = await getGastosByRendicion(rendicionId);
+
+  return Promise.all(
+    gastos.map(async (gasto) => ({
+      gasto,
+      adjuntos: await adjuntosTable.where('gasto_id').equals(gasto.id).toArray(),
+    })),
+  );
+}
+
 export async function createGasto(
   rendicionId: string,
   data: GastoFormData,

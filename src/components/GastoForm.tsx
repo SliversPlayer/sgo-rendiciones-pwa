@@ -183,7 +183,7 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
 
         {formError ? <p className="form-error">{formError}</p> : null}
 
-        <div className="form-actions sticky-actions">
+        <div className="form-actions sticky-actions primary-first-on-stack">
           <button type="button" className="button button-secondary" onClick={onCancel}>
             Cancelar
           </button>

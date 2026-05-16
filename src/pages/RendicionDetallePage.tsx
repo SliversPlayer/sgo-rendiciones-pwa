@@ -50,10 +50,27 @@ export function RendicionDetallePage() {
         <ConnectionStatus isOnline={isOnline} />
       </header>
 
-      <div className="top-actions">
+      <div className="top-actions detail-actions">
         <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
           Volver
         </button>
+        {rendicion && rendicion.estado !== 'ENVIADA' ? (
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={() => void handleSend()}
+            disabled={
+              !rendicion ||
+              !isOnline ||
+              isSending ||
+              !isEditable ||
+              !isRendicionValida ||
+              rendicion.estado === 'ENVIANDO'
+            }
+          >
+            {isSending || rendicion.estado === 'ENVIANDO' ? 'Enviando...' : 'Enviar rendicion'}
+          </button>
+        ) : null}
         <button
           type="button"
           className="button button-primary"
@@ -119,18 +136,6 @@ export function RendicionDetallePage() {
               <p className="eyebrow">Gastos</p>
               <h2 id="gastos-title">Lista de gastos</h2>
             </div>
-            {rendicion.estado !== 'ENVIADA' ? (
-              <button
-                type="button"
-                className="button button-primary"
-                onClick={() => void handleSend()}
-                disabled={!isOnline || isSending || !isEditable || rendicion.estado === 'ENVIANDO'}
-              >
-                {isSending || rendicion.estado === 'ENVIANDO'
-                  ? 'Enviando...'
-                  : 'Enviar rendicion'}
-              </button>
-            ) : null}
           </div>
 
           <GastoList

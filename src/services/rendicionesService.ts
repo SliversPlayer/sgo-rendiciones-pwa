@@ -1,15 +1,51 @@
 import { adjuntosTable, db, gastosTable, rendicionesTable } from './db';
+import { getTipoRendicionById } from './catalogos';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
 import { nowIso } from '../utils/date';
 import { createId } from '../utils/id';
 import { isRendicionEditable } from '../utils/rendicionStatus';
 
+export interface RendicionesStats {
+  totalRendiciones: number;
+  totalBorradores: number;
+  totalEnviadas: number;
+  montoTotalAcumulado: number;
+}
+
 export async function getRendiciones(): Promise<Rendicion[]> {
-  return rendicionesTable.orderBy('fecha_creacion').reverse().toArray();
+  return rendicionesTable.orderBy('fecha_actualizacion').reverse().toArray();
 }
 
 export async function getRendicionById(id: string): Promise<Rendicion | undefined> {
   return rendicionesTable.get(id);
+}
+
+export async function getRendicionesStats(): Promise<RendicionesStats> {
+  const [rendiciones, gastos] = await Promise.all([
+    rendicionesTable.toArray(),
+    gastosTable.toArray(),
+  ]);
+
+  return {
+    totalRendiciones: rendiciones.length,
+    totalBorradores: rendiciones.filter((rendicion) => rendicion.estado === 'BORRADOR').length,
+    totalEnviadas: rendiciones.filter((rendicion) => rendicion.estado === 'ENVIADA').length,
+    montoTotalAcumulado: gastos.reduce((total, gasto) => total + gasto.monto, 0),
+  };
+}
+
+async function getTipoRendicionSnapshot(data: RendicionFormData) {
+  const tipoRendicion = await getTipoRendicionById(data.tipo_rendicion_id);
+
+  if (!tipoRendicion || !tipoRendicion.activo) {
+    throw new Error('Selecciona un tipo de rendicion valido.');
+  }
+
+  return {
+    tipo_rendicion_id: tipoRendicion.id,
+    tipo_rendicion_nombre: tipoRendicion.nombre,
+    tipo_rendicion_cuenta_contable: tipoRendicion.cuenta_contable,
+  };
 }
 
 export async function createRendicion(
@@ -18,12 +54,14 @@ export async function createRendicion(
   usuarioEmail?: string | null,
 ): Promise<Rendicion> {
   const timestamp = nowIso();
+  const tipoRendicion = await getTipoRendicionSnapshot(data);
   const rendicion: Rendicion = {
     id: createId(),
     usuario_id: usuarioId,
     usuario_email: usuarioEmail ?? undefined,
     titulo: data.titulo.trim(),
     glosa_grupo: data.glosa_grupo.trim() || undefined,
+    ...tipoRendicion,
     estado: 'BORRADOR',
     sync_status: 'LOCAL',
     fecha_creacion: timestamp,
@@ -42,10 +80,12 @@ export async function updateRendicion(
     throw new Error('Esta rendicion ya fue enviada y esta bloqueada para edicion.');
   }
 
+  const tipoRendicion = await getTipoRendicionSnapshot(data);
   const updated: Rendicion = {
     ...current,
     titulo: data.titulo.trim(),
     glosa_grupo: data.glosa_grupo.trim() || undefined,
+    ...tipoRendicion,
     fecha_actualizacion: nowIso(),
   };
 

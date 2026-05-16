@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
-import { centrosCosto, tiposDocumento, tiposGasto } from '../services/catalogos';
+import { useGastoCatalogos } from './useCatalogos';
 import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gasto';
 import {
   compressImageIfNeeded,
@@ -38,7 +38,7 @@ function getInitialData(initialGasto?: GastoConAdjuntos): GastoFormData {
     return {
       fecha: todayInputDate(),
       glosa: '',
-      centro_costo_id: '',
+      centro_negocio_id: '',
       tipo_documento_id: '',
       numero_documento: '',
       tipo_gasto_id: '',
@@ -49,7 +49,8 @@ function getInitialData(initialGasto?: GastoConAdjuntos): GastoFormData {
   return {
     fecha: formatInputDate(initialGasto.gasto.fecha),
     glosa: initialGasto.gasto.glosa,
-    centro_costo_id: initialGasto.gasto.centro_costo_id,
+    centro_negocio_id:
+      initialGasto.gasto.centro_negocio_id ?? initialGasto.gasto.centro_costo_id ?? '',
     tipo_documento_id: initialGasto.gasto.tipo_documento_id,
     numero_documento: initialGasto.gasto.numero_documento,
     tipo_gasto_id: initialGasto.gasto.tipo_gasto_id,
@@ -70,6 +71,11 @@ function getInitialAdjuntos(initialGasto?: GastoConAdjuntos): AdjuntoDraft[] {
 }
 
 export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
+  const {
+    catalogos,
+    isLoading: isCatalogosLoading,
+    error: catalogosError,
+  } = useGastoCatalogos();
   const [data, setData] = useState<GastoFormData>(() => getInitialData(initialGasto));
   const [adjuntos, setAdjuntos] = useState<AdjuntoDraft[]>(() =>
     getInitialAdjuntos(initialGasto),
@@ -175,8 +181,16 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       return 'Ingresa la glosa del gasto.';
     }
 
-    if (!data.centro_costo_id) {
-      return 'Selecciona un centro de costo.';
+    if (isCatalogosLoading) {
+      return 'Espera a que se carguen los catalogos locales.';
+    }
+
+    if (catalogosError) {
+      return catalogosError;
+    }
+
+    if (!data.centro_negocio_id) {
+      return 'Selecciona un centro de negocio.';
     }
 
     if (!data.tipo_documento_id) {
@@ -241,10 +255,10 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
     data,
     adjuntos,
     catalogos: {
-      centrosCosto,
-      tiposDocumento,
-      tiposGasto,
+      ...catalogos,
     },
+    isCatalogosLoading,
+    catalogosError,
     isSaving,
     isProcessingFiles,
     formError,

@@ -3,22 +3,36 @@ import {
   createRendicion,
   deleteRendicion,
   getRendiciones,
+  getRendicionesStats,
   updateRendicion,
+  type RendicionesStats,
 } from '../services/rendicionesService';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
 import { useAuth } from './useAuth';
 
+const emptyStats: RendicionesStats = {
+  totalRendiciones: 0,
+  totalBorradores: 0,
+  totalEnviadas: 0,
+  montoTotalAcumulado: 0,
+};
+
 export function useRendiciones() {
   const { currentUser } = useAuth();
   const [rendiciones, setRendiciones] = useState<Rendicion[]>([]);
+  const [stats, setStats] = useState<RendicionesStats>(emptyStats);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadRendiciones = useCallback(async () => {
     try {
       setError(null);
-      const storedRendiciones = await getRendiciones();
+      const [storedRendiciones, storedStats] = await Promise.all([
+        getRendiciones(),
+        getRendicionesStats(),
+      ]);
       setRendiciones(storedRendiciones);
+      setStats(storedStats);
     } catch {
       setError('No se pudieron cargar las rendiciones locales.');
     } finally {
@@ -36,16 +50,14 @@ export function useRendiciones() {
       return;
     }
 
-    const created = await createRendicion(data, currentUser.uid, currentUser.email);
-    setRendiciones((current) => [created, ...current]);
+    await createRendicion(data, currentUser.uid, currentUser.email);
+    await loadRendiciones();
   };
 
   const saveRendicion = async (rendicion: Rendicion, data: RendicionFormData) => {
     try {
-      const updated = await updateRendicion(rendicion, data);
-      setRendiciones((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
+      await updateRendicion(rendicion, data);
+      await loadRendiciones();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo guardar la rendicion.');
       throw error;
@@ -55,7 +67,7 @@ export function useRendiciones() {
   const removeRendicion = async (id: string) => {
     try {
       await deleteRendicion(id);
-      setRendiciones((current) => current.filter((item) => item.id !== id));
+      await loadRendiciones();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo eliminar la rendicion.');
     }
@@ -63,6 +75,7 @@ export function useRendiciones() {
 
   return {
     rendiciones,
+    stats,
     isLoading,
     error,
     addRendicion,

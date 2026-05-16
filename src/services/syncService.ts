@@ -2,7 +2,6 @@ import { FirebaseError } from 'firebase/app';
 import { writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import type { User } from 'firebase/auth';
-import { centrosCosto, findCatalogoItem, tiposDocumento, tiposGasto } from './catalogos';
 import { adjuntosTable, gastosTable, rendicionesTable } from './db';
 import { firestoreDb, firebaseStorage } from './firebase/firebase';
 import { updateRendicionSyncState } from './rendicionesService';
@@ -50,6 +49,10 @@ function getSyncErrorMessage(error: unknown): string {
 }
 
 function validateGasto(gasto: Gasto, adjuntos: Adjunto[]): string | null {
+  const centroNegocioId = gasto.centro_negocio_id ?? gasto.centro_costo_id;
+  const centroNegocioNombre = gasto.centro_negocio_nombre ?? gasto.centro_costo_nombre;
+  const centroNegocioCodigo = gasto.centro_negocio_codigo ?? gasto.centro_costo_codigo;
+
   if (!gasto.fecha || Number.isNaN(new Date(gasto.fecha).getTime())) {
     return `El gasto "${gasto.glosa || gasto.id}" no tiene una fecha valida.`;
   }
@@ -58,20 +61,25 @@ function validateGasto(gasto: Gasto, adjuntos: Adjunto[]): string | null {
     return 'Hay un gasto sin glosa.';
   }
 
-  if (!gasto.centro_costo_id || !gasto.centro_costo_nombre) {
-    return `El gasto "${gasto.glosa}" no tiene centro de costo.`;
+  if (!centroNegocioId || !centroNegocioNombre || !centroNegocioCodigo) {
+    return `El gasto "${gasto.glosa}" no tiene centro de negocio completo.`;
   }
 
-  if (!gasto.tipo_documento_id || !gasto.tipo_documento_nombre) {
-    return `El gasto "${gasto.glosa}" no tiene tipo de documento.`;
+  if (
+    !gasto.tipo_documento_id ||
+    !gasto.tipo_documento_nombre ||
+    !gasto.tipo_documento_codigo ||
+    !gasto.tipo_documento_cuenta_contable
+  ) {
+    return `El gasto "${gasto.glosa}" no tiene tipo de documento completo.`;
   }
 
   if (!gasto.numero_documento?.trim()) {
     return `El gasto "${gasto.glosa}" no tiene numero de documento.`;
   }
 
-  if (!gasto.tipo_gasto_id || !gasto.tipo_gasto_nombre) {
-    return `El gasto "${gasto.glosa}" no tiene tipo de gasto.`;
+  if (!gasto.tipo_gasto_id || !gasto.tipo_gasto_nombre || !gasto.tipo_gasto_cuenta_contable) {
+    return `El gasto "${gasto.glosa}" no tiene tipo de gasto completo.`;
   }
 
   if (!gasto.monto || gasto.monto <= 0) {
@@ -117,6 +125,14 @@ function validateRendicion(rendicion: Rendicion | undefined, gastos: GastoWithAd
     throw new Error('La rendicion debe tener al menos 1 gasto para enviarse.');
   }
 
+  if (
+    !rendicion.tipo_rendicion_id ||
+    !rendicion.tipo_rendicion_nombre ||
+    !rendicion.tipo_rendicion_cuenta_contable
+  ) {
+    throw new Error('Selecciona un tipo de rendicion antes de enviar.');
+  }
+
   const invalidGasto = gastos
     .map(({ gasto, adjuntos }) => validateGasto(gasto, adjuntos))
     .find(Boolean);
@@ -154,16 +170,15 @@ async function uploadAdjuntos(
   );
 }
 
-function withCatalogCodes(gasto: Gasto): Gasto {
-  const centroCosto = findCatalogoItem(centrosCosto, gasto.centro_costo_id);
-  const tipoDocumento = findCatalogoItem(tiposDocumento, gasto.tipo_documento_id);
-  const tipoGasto = findCatalogoItem(tiposGasto, gasto.tipo_gasto_id);
-
+function withNormalizedSnapshots(gasto: Gasto): Gasto {
   return {
     ...gasto,
-    centro_costo_codigo: gasto.centro_costo_codigo ?? centroCosto?.codigo ?? '',
-    tipo_documento_codigo: gasto.tipo_documento_codigo ?? tipoDocumento?.codigo ?? '',
-    tipo_gasto_codigo: gasto.tipo_gasto_codigo ?? tipoGasto?.codigo ?? '',
+    centro_negocio_id: gasto.centro_negocio_id ?? gasto.centro_costo_id ?? '',
+    centro_negocio_nombre: gasto.centro_negocio_nombre ?? gasto.centro_costo_nombre ?? '',
+    centro_negocio_codigo: gasto.centro_negocio_codigo ?? gasto.centro_costo_codigo ?? '',
+    tipo_documento_codigo: gasto.tipo_documento_codigo ?? '',
+    tipo_documento_cuenta_contable: gasto.tipo_documento_cuenta_contable ?? '',
+    tipo_gasto_cuenta_contable: gasto.tipo_gasto_cuenta_contable ?? gasto.tipo_gasto_codigo ?? '',
   };
 }
 
@@ -210,6 +225,9 @@ export async function sendRendicion(rendicionId: string, user: User | null): Pro
       usuario_email: user.email ?? rendicion.usuario_email ?? '',
       titulo: rendicion.titulo,
       glosa: rendicion.glosa_grupo ?? '',
+      tipo_rendicion_id: rendicion.tipo_rendicion_id,
+      tipo_rendicion_nombre: rendicion.tipo_rendicion_nombre,
+      tipo_rendicion_cuenta_contable: rendicion.tipo_rendicion_cuenta_contable,
       estado: 'ENVIADA',
       sync_status: 'SYNCED',
       fecha_creacion: rendicion.fecha_creacion,
@@ -222,7 +240,7 @@ export async function sendRendicion(rendicionId: string, user: User | null): Pro
     });
 
     for (const { gasto } of gastos) {
-      const remoteGasto = withCatalogCodes(gasto);
+      const remoteGasto = withNormalizedSnapshots(gasto);
       const gastoRef = doc(firestoreDb, 'rendiciones', rendicion.id, 'gastos', gasto.id);
 
       batch.set(gastoRef, {
@@ -230,16 +248,20 @@ export async function sendRendicion(rendicionId: string, user: User | null): Pro
         rendicion_id: remoteGasto.rendicion_id,
         fecha: remoteGasto.fecha,
         glosa: remoteGasto.glosa,
-        centro_costo_id: remoteGasto.centro_costo_id,
-        centro_costo_nombre: remoteGasto.centro_costo_nombre,
-        centro_costo_codigo: remoteGasto.centro_costo_codigo,
+        centro_negocio_id: remoteGasto.centro_negocio_id,
+        centro_negocio_nombre: remoteGasto.centro_negocio_nombre,
+        centro_negocio_codigo: remoteGasto.centro_negocio_codigo,
+        centro_costo_id: remoteGasto.centro_negocio_id,
+        centro_costo_nombre: remoteGasto.centro_negocio_nombre,
+        centro_costo_codigo: remoteGasto.centro_negocio_codigo,
         tipo_documento_id: remoteGasto.tipo_documento_id,
         tipo_documento_nombre: remoteGasto.tipo_documento_nombre,
         tipo_documento_codigo: remoteGasto.tipo_documento_codigo,
+        tipo_documento_cuenta_contable: remoteGasto.tipo_documento_cuenta_contable,
         numero_documento: remoteGasto.numero_documento,
         tipo_gasto_id: remoteGasto.tipo_gasto_id,
         tipo_gasto_nombre: remoteGasto.tipo_gasto_nombre,
-        tipo_gasto_codigo: remoteGasto.tipo_gasto_codigo,
+        tipo_gasto_cuenta_contable: remoteGasto.tipo_gasto_cuenta_contable,
         monto: remoteGasto.monto,
         adjuntos: uploadedByGasto.get(remoteGasto.id) ?? [],
       });

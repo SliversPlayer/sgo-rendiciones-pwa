@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { useTiposRendicion } from '../hooks/useCatalogos';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
 
 interface RendicionFormProps {
@@ -8,8 +9,13 @@ interface RendicionFormProps {
 }
 
 export function RendicionForm({ initialRendicion, onSubmit, onCancel }: RendicionFormProps) {
+  const { tiposRendicion, isLoading: isCatalogosLoading, error: catalogosError } =
+    useTiposRendicion();
   const [titulo, setTitulo] = useState(initialRendicion?.titulo ?? '');
   const [glosaGrupo, setGlosaGrupo] = useState(initialRendicion?.glosa_grupo ?? '');
+  const [tipoRendicionId, setTipoRendicionId] = useState(
+    initialRendicion?.tipo_rendicion_id ?? '',
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -23,15 +29,35 @@ export function RendicionForm({ initialRendicion, onSubmit, onCancel }: Rendicio
       return;
     }
 
+    if (isCatalogosLoading) {
+      setFormError('Espera a que se carguen los catalogos locales.');
+      return;
+    }
+
+    if (catalogosError) {
+      setFormError(catalogosError);
+      return;
+    }
+
+    if (!tipoRendicionId) {
+      setFormError('Selecciona el tipo de rendicion.');
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFormError(null);
       await onSubmit({
         titulo,
         glosa_grupo: glosaGrupo,
+        tipo_rendicion_id: tipoRendicionId,
       });
-    } catch {
-      setFormError('No se pudo guardar la rendicion. Intenta nuevamente.');
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo guardar la rendicion. Intenta nuevamente.',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -59,6 +85,30 @@ export function RendicionForm({ initialRendicion, onSubmit, onCancel }: Rendicio
           />
         </label>
 
+        <fieldset className="radio-card-group">
+          <legend>Tipo de rendicion *</legend>
+          {isCatalogosLoading ? <p className="notice">Cargando catalogos locales...</p> : null}
+          {catalogosError ? <p className="notice notice-error">{catalogosError}</p> : null}
+          <div className="radio-card-list">
+            {tiposRendicion.map((tipo) => (
+              <label
+                key={tipo.id}
+                className={`radio-card ${tipoRendicionId === tipo.id ? 'is-selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="tipo_rendicion_id"
+                  value={tipo.id}
+                  checked={tipoRendicionId === tipo.id}
+                  onChange={(event) => setTipoRendicionId(event.target.value)}
+                  disabled={isCatalogosLoading}
+                />
+                <span>{tipo.nombre}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <label>
           <span>Glosa de grupo</span>
           <textarea
@@ -72,11 +122,15 @@ export function RendicionForm({ initialRendicion, onSubmit, onCancel }: Rendicio
 
         {formError ? <p className="form-error">{formError}</p> : null}
 
-        <div className="form-actions">
+        <div className="form-actions sticky-actions">
           <button type="button" className="button button-secondary" onClick={onCancel}>
             Cancelar
           </button>
-          <button type="submit" className="button button-primary" disabled={isSaving}>
+          <button
+            type="submit"
+            className="button button-primary"
+            disabled={isSaving || isCatalogosLoading}
+          >
             {isSaving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>

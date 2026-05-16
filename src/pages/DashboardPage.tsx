@@ -1,26 +1,74 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { RendicionCard } from '../components/RendicionCard';
 import { RendicionForm } from '../components/RendicionForm';
 import { useAuth } from '../hooks/useAuth';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useRendiciones } from '../hooks/useRendiciones';
-import type { Rendicion, RendicionFormData } from '../types/rendicion';
-import { isRendicionEditable } from '../utils/rendicionStatus';
+import type { Rendicion, RendicionEstado, RendicionFormData } from '../types/rendicion';
+import { formatCurrency } from '../utils/format';
+import { getEstadoLabel, isRendicionEditable } from '../utils/rendicionStatus';
 
 type ViewMode = 'list' | 'create' | 'edit';
+type EstadoFilter = 'TODAS' | RendicionEstado;
 
-interface DashboardPageProps {
-  navigateTo: (path: string) => void;
+const estadoOptions: EstadoFilter[] = [
+  'TODAS',
+  'BORRADOR',
+  'PENDIENTE_ENVIO',
+  'ENVIANDO',
+  'ENVIADA',
+  'APROBADA',
+  'RECHAZADA',
+  'ERROR',
+];
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
-export function DashboardPage({ navigateTo }: DashboardPageProps) {
+function matchesSearch(rendicion: Rendicion, search: string): boolean {
+  if (!search) {
+    return true;
+  }
+
+  return normalizeSearch(
+    [
+      rendicion.titulo,
+      rendicion.glosa_grupo ?? '',
+      rendicion.tipo_rendicion_nombre ?? '',
+      getEstadoLabel(rendicion.estado),
+    ].join(' '),
+  ).includes(search);
+}
+
+export function DashboardPage() {
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const { userProfile, logout } = useAuth();
-  const { rendiciones, isLoading, error, addRendicion, saveRendicion, removeRendicion } =
+  const { rendiciones, stats, isLoading, error, addRendicion, saveRendicion, removeRendicion } =
     useRendiciones();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRendicion, setSelectedRendicion] = useState<Rendicion | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('TODAS');
+
+  const visibleRendiciones = useMemo(() => {
+    const search = normalizeSearch(searchTerm.trim());
+
+    return rendiciones
+      .filter((rendicion) => estadoFilter === 'TODAS' || rendicion.estado === estadoFilter)
+      .filter((rendicion) => matchesSearch(rendicion, search))
+      .sort(
+        (first, second) =>
+          new Date(second.fecha_actualizacion).getTime() -
+          new Date(first.fecha_actualizacion).getTime(),
+      );
+  }, [estadoFilter, rendiciones, searchTerm]);
 
   const showList = () => {
     setViewMode('list');
@@ -60,7 +108,7 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
           <p className="eyebrow">SGO Rendiciones PWA</p>
           <h1>SGO Rendiciones</h1>
           <p className="header-copy">
-            Base offline-first para gestionar rendiciones locales en borrador.
+            Gestiona rendiciones offline con catalogos estructurados y envio individual.
           </p>
           <p className="demo-user">
             {userProfile?.nombre ?? 'Usuario'} - {userProfile?.email}
@@ -102,8 +150,58 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
             </button>
           </div>
 
+          <div className="stats-grid" aria-label="Estadisticas de rendiciones">
+            <div className="stat-card">
+              <span>Total rendiciones</span>
+              <strong>{stats.totalRendiciones}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Borradores</span>
+              <strong>{stats.totalBorradores}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Enviadas</span>
+              <strong>{stats.totalEnviadas}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Monto acumulado</span>
+              <strong>{formatCurrency(stats.montoTotalAcumulado)}</strong>
+            </div>
+          </div>
+
+          <div className="filters-bar" aria-label="Filtros de rendiciones">
+            <label>
+              <span>Buscar</span>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Titulo, glosa, tipo o estado"
+              />
+            </label>
+            <label>
+              <span>Estado</span>
+              <select
+                value={estadoFilter}
+                onChange={(event) => setEstadoFilter(event.target.value as EstadoFilter)}
+              >
+                {estadoOptions.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado === 'TODAS' ? 'Todos' : getEstadoLabel(estado)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           {error ? <p className="notice notice-error">{error}</p> : null}
-          {isLoading ? <p className="notice">Cargando rendiciones locales...</p> : null}
+          {isLoading ? (
+            <div className="skeleton-grid" aria-label="Cargando rendiciones">
+              <div className="skeleton-card" />
+              <div className="skeleton-card" />
+              <div className="skeleton-card" />
+            </div>
+          ) : null}
 
           {!isLoading && rendiciones.length === 0 ? (
             <div className="empty-state">
@@ -112,12 +210,19 @@ export function DashboardPage({ navigateTo }: DashboardPageProps) {
             </div>
           ) : null}
 
+          {!isLoading && rendiciones.length > 0 && visibleRendiciones.length === 0 ? (
+            <div className="empty-state">
+              <h3>Sin resultados</h3>
+              <p>Ajusta la busqueda o cambia el filtro de estado.</p>
+            </div>
+          ) : null}
+
           <div className="rendiciones-grid">
-            {rendiciones.map((rendicion) => (
+            {visibleRendiciones.map((rendicion) => (
               <RendicionCard
                 key={rendicion.id}
                 rendicion={rendicion}
-                onOpen={(item) => navigateTo(`/rendicion/${item.id}`)}
+                onOpen={(item) => navigate(`/rendiciones/${item.id}`)}
                 onEdit={(item) => {
                   if (!isRendicionEditable(item)) {
                     return;

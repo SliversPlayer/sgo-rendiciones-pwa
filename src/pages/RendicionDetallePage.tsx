@@ -1,3 +1,4 @@
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { GastoList } from '../components/GastoList';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -7,16 +8,17 @@ import type { Gasto } from '../types/gasto';
 import { formatDisplayDate } from '../utils/date';
 import { getEstadoLabel, getSyncStatusLabel } from '../utils/rendicionStatus';
 
-interface RendicionDetallePageProps {
-  rendicionId: string;
-  navigateTo: (path: string) => void;
-}
-
-export function RendicionDetallePage({ rendicionId, navigateTo }: RendicionDetallePageProps) {
+export function RendicionDetallePage() {
+  const { id: rendicionId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const { rendicion, gastos, isLoading, error, isRendicionValida, isEditable, removeGasto, reload } =
-    useRendicionDetalle(rendicionId);
+    useRendicionDetalle(rendicionId ?? '');
   const { isSending, syncError, syncSuccess, send } = useRendicionSync();
+
+  if (!rendicionId) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleDelete = async (gasto: Gasto) => {
     if (!isEditable) {
@@ -49,13 +51,13 @@ export function RendicionDetallePage({ rendicionId, navigateTo }: RendicionDetal
       </header>
 
       <div className="top-actions">
-        <button type="button" className="button button-secondary" onClick={() => navigateTo('/')}>
+        <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
           Volver
         </button>
         <button
           type="button"
           className="button button-primary"
-          onClick={() => navigateTo(`/rendicion/${rendicionId}/nuevo`)}
+          onClick={() => navigate(`/rendiciones/${rendicionId}/gastos/nuevo`)}
           disabled={!rendicion || !isEditable}
         >
           Agregar gasto
@@ -83,6 +85,9 @@ export function RendicionDetallePage({ rendicionId, navigateTo }: RendicionDetal
               <p className="card-muted">
                 {isRendicionValida ? 'Rendicion valida' : 'Rendicion incompleta'} - Sync:{' '}
                 {getSyncStatusLabel(rendicion.sync_status ?? 'LOCAL')}
+              </p>
+              <p className="card-muted">
+                Tipo: {rendicion.tipo_rendicion_nombre || 'Sin tipo de rendicion'}
               </p>
             </div>
             <dl className="card-meta">
@@ -130,7 +135,7 @@ export function RendicionDetallePage({ rendicionId, navigateTo }: RendicionDetal
 
           <GastoList
             gastos={gastos}
-            onEdit={(gasto) => navigateTo(`/rendicion/${rendicionId}/editar/${gasto.id}`)}
+            onEdit={(gasto) => navigate(`/rendiciones/${rendicionId}/gastos/${gasto.id}`)}
             onDelete={handleDelete}
             readOnly={!isEditable}
           />

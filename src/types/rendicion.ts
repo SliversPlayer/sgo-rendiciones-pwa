@@ -15,6 +15,9 @@ export interface Rendicion {
   usuario_email?: string;
   titulo: string;
   glosa_grupo?: string;
+  tipo_rendicion_id: string;
+  tipo_rendicion_nombre: string;
+  tipo_rendicion_cuenta_contable: string;
   estado: RendicionEstado;
   sync_status: RendicionSyncStatus;
   fecha_creacion: string;
@@ -26,4 +29,5 @@ export interface Rendicion {
 export interface RendicionFormData {
   titulo: string;
   glosa_grupo: string;
+  tipo_rendicion_id: string;
 }

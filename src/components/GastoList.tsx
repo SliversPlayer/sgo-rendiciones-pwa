@@ -1,18 +1,11 @@
 import type { Gasto } from '../types/gasto';
+import { formatCurrency } from '../utils/format';
 
 interface GastoListProps {
   gastos: Gasto[];
   onEdit: (gasto: Gasto) => void;
   onDelete: (gasto: Gasto) => void;
   readOnly?: boolean;
-}
-
-function formatMonto(value: number): string {
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoListProps) {
@@ -27,37 +20,44 @@ export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoL
 
   return (
     <div className="gastos-list">
-      {gastos.map((gasto) => (
-        <article className="gasto-item" key={gasto.id}>
-          <div className="gasto-main">
-            <div>
-              <p className="card-kicker">{gasto.tipo_documento_nombre}</p>
-              <h3>{gasto.glosa}</h3>
-              <p className="card-muted">Documento {gasto.numero_documento}</p>
-            </div>
-            <strong>{formatMonto(gasto.monto)}</strong>
-          </div>
+      {gastos.map((gasto) => {
+        const centroNegocioNombre =
+          gasto.centro_negocio_nombre ?? gasto.centro_costo_nombre ?? 'Sin centro de negocio';
 
-          {!readOnly ? (
-            <div className="card-actions compact-actions">
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => onEdit(gasto)}
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                className="button button-danger"
-                onClick={() => onDelete(gasto)}
-              >
-                Eliminar
-              </button>
+        return (
+          <article className="gasto-item" key={gasto.id}>
+            <div className="gasto-main">
+              <div>
+                <p className="card-kicker">{gasto.tipo_documento_nombre}</p>
+                <h3>{gasto.glosa}</h3>
+                <p className="card-muted">
+                  {centroNegocioNombre} - Documento {gasto.numero_documento}
+                </p>
+              </div>
+              <strong>{formatCurrency(gasto.monto)}</strong>
             </div>
-          ) : null}
-        </article>
-      ))}
+
+            {!readOnly ? (
+              <div className="card-actions compact-actions">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => onEdit(gasto)}
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  onClick={() => onDelete(gasto)}
+                >
+                  Eliminar
+                </button>
+              </div>
+            ) : null}
+          </article>
+        );
+      })}
     </div>
   );
 }

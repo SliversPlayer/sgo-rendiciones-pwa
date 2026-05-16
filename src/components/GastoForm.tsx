@@ -12,6 +12,8 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
     data,
     adjuntos,
     catalogos,
+    isCatalogosLoading,
+    catalogosError,
     isSaving,
     isProcessingFiles,
     formError,
@@ -55,13 +57,15 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           </label>
 
           <label>
-            <span>Centro de costo</span>
+            <span>Centro de negocio</span>
             <select
-              value={data.centro_costo_id}
-              onChange={(event) => updateField('centro_costo_id', event.target.value)}
+              className={data.centro_negocio_id ? 'is-filled' : ''}
+              value={data.centro_negocio_id}
+              onChange={(event) => updateField('centro_negocio_id', event.target.value)}
+              disabled={isCatalogosLoading}
             >
-              <option value="">Selecciona centro de costo</option>
-              {catalogos.centrosCosto.map((item) => (
+              <option value="">Selecciona centro de negocio</option>
+              {catalogos.centrosNegocio.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
                 </option>
@@ -72,8 +76,10 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <label>
             <span>Tipo documento</span>
             <select
+              className={data.tipo_documento_id ? 'is-filled' : ''}
               value={data.tipo_documento_id}
               onChange={(event) => updateField('tipo_documento_id', event.target.value)}
+              disabled={isCatalogosLoading}
             >
               <option value="">Selecciona tipo documento</option>
               {catalogos.tiposDocumento.map((item) => (
@@ -98,8 +104,10 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <label>
             <span>Tipo gasto</span>
             <select
+              className={data.tipo_gasto_id ? 'is-filled' : ''}
               value={data.tipo_gasto_id}
               onChange={(event) => updateField('tipo_gasto_id', event.target.value)}
+              disabled={isCatalogosLoading}
             >
               <option value="">Selecciona tipo gasto</option>
               {catalogos.tiposGasto.map((item) => (
@@ -122,6 +130,9 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
             />
           </label>
         </div>
+
+        {isCatalogosLoading ? <p className="notice">Cargando catalogos locales...</p> : null}
+        {catalogosError ? <p className="notice notice-error">{catalogosError}</p> : null}
 
         <fieldset className="adjuntos-fieldset">
           <legend>Adjuntos</legend>
@@ -172,14 +183,14 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
 
         {formError ? <p className="form-error">{formError}</p> : null}
 
-        <div className="form-actions">
+        <div className="form-actions sticky-actions">
           <button type="button" className="button button-secondary" onClick={onCancel}>
             Cancelar
           </button>
           <button
             type="submit"
             className="button button-primary"
-            disabled={isSaving || isProcessingFiles}
+            disabled={isSaving || isProcessingFiles || isCatalogosLoading}
           >
             {isProcessingFiles ? 'Procesando...' : isSaving ? 'Guardando...' : 'Guardar gasto'}
           </button>

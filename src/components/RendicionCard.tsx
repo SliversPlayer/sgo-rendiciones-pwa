@@ -36,6 +36,10 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
 
       <dl className="card-meta">
         <div>
+          <dt>Tipo</dt>
+          <dd>{rendicion.tipo_rendicion_nombre || 'Sin tipo'}</dd>
+        </div>
+        <div>
           <dt>Creada</dt>
           <dd>{formatDisplayDate(rendicion.fecha_creacion)}</dd>
         </div>

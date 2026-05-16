@@ -120,6 +120,65 @@ button {
   padding-top: 8px;
 }
 
+.stats-grid {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.stat-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(18, 52, 59, 0.06);
+}
+
+.stat-card span {
+  color: #62736f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  color: #12343b;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.filters-bar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.filters-bar label {
+  display: grid;
+  gap: 7px;
+  color: #213b40;
+  font-weight: 800;
+}
+
+.filters-bar input,
+.filters-bar select {
+  width: 100%;
+  border: 1px solid #cbd8d4;
+  border-radius: 8px;
+  padding: 13px 14px;
+  background: #ffffff;
+  color: #1f2933;
+  outline: none;
+}
+
+.filters-bar input:focus,
+.filters-bar select:focus {
+  border-color: #3f7f76;
+  box-shadow: 0 0 0 3px rgba(63, 127, 118, 0.14);
+}
+
 .section-heading {
   margin-bottom: 18px;
 }
@@ -374,6 +433,11 @@ button {
   outline: none;
 }
 
+.rendicion-form select.is-filled {
+  border-color: #3f7f76;
+  background: #f3faf8;
+}
+
 .rendicion-form input:focus,
 .rendicion-form select:focus,
 .rendicion-form textarea:focus {
@@ -394,6 +458,55 @@ button {
 .form-grid {
   display: grid;
   gap: 16px;
+}
+
+.radio-card-group {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.radio-card-group legend {
+  color: #213b40;
+  font-weight: 800;
+}
+
+.radio-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.radio-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #cbd8d4;
+  border-radius: 8px;
+  padding: 13px 14px;
+  background: #fbfdfc;
+  color: #1f2933;
+  cursor: pointer;
+}
+
+.radio-card input {
+  width: auto;
+  margin: 0;
+  accent-color: #12343b;
+}
+
+.radio-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.radio-card.is-selected {
+  border-color: #3f7f76;
+  background: #f3faf8;
+  box-shadow: 0 0 0 3px rgba(63, 127, 118, 0.12);
 }
 
 .adjuntos-fieldset {
@@ -523,6 +636,59 @@ button {
   margin-top: 14px;
 }
 
+.skeleton-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.skeleton-card {
+  min-height: 170px;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(238, 245, 243, 0.65), rgba(255, 255, 255, 0.95), rgba(238, 245, 243, 0.65)),
+    #ffffff;
+  background-size: 220% 100%;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -220% 0;
+  }
+}
+
+@media (max-width: 719px) {
+  .app-shell {
+    padding-bottom: 96px;
+  }
+
+  .rendicion-card,
+  .empty-state,
+  .form-panel,
+  .detail-summary,
+  .gasto-item {
+    box-shadow: 0 8px 18px rgba(18, 52, 59, 0.06);
+  }
+
+  .sticky-actions {
+    position: sticky;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    margin: 6px -20px -20px;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid #d9e2df;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+  }
+}
+
 @media (min-width: 720px) {
   .app-shell {
     padding: 32px 28px 64px;
@@ -552,6 +718,19 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .filters-bar {
+    grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+    align-items: end;
+  }
+
+  .skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .card-actions,
   .form-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -575,6 +754,10 @@ button {
 
 @media (min-width: 1040px) {
   .rendiciones-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .skeleton-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

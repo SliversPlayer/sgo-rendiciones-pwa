@@ -1,8 +1,7 @@
 import {
-  centrosCosto,
-  findCatalogoItem,
-  tiposDocumento,
-  tiposGasto,
+  getCentroNegocioById,
+  getTipoDocumentoById,
+  getTipoGastoById,
 } from './catalogos';
 import { adjuntosTable, db, gastosTable, rendicionesTable } from './db';
 import type {
@@ -20,16 +19,25 @@ import {
 import { nowIso } from '../utils/date';
 import { createId } from '../utils/id';
 
-function buildGasto(
+async function buildGasto(
   rendicionId: string,
   data: GastoFormData,
   current?: Gasto,
-): Gasto {
-  const centroCosto = findCatalogoItem(centrosCosto, data.centro_costo_id);
-  const tipoDocumento = findCatalogoItem(tiposDocumento, data.tipo_documento_id);
-  const tipoGasto = findCatalogoItem(tiposGasto, data.tipo_gasto_id);
+): Promise<Gasto> {
+  const [centroNegocio, tipoDocumento, tipoGasto] = await Promise.all([
+    getCentroNegocioById(data.centro_negocio_id),
+    getTipoDocumentoById(data.tipo_documento_id),
+    getTipoGastoById(data.tipo_gasto_id),
+  ]);
 
-  if (!centroCosto || !tipoDocumento || !tipoGasto) {
+  if (
+    !centroNegocio ||
+    !centroNegocio.activo ||
+    !tipoDocumento ||
+    !tipoDocumento.activo ||
+    !tipoGasto ||
+    !tipoGasto.activo
+  ) {
     throw new Error('Catalogo invalido.');
   }
 
@@ -38,16 +46,17 @@ function buildGasto(
     rendicion_id: rendicionId,
     fecha: new Date(data.fecha).toISOString(),
     glosa: data.glosa.trim(),
-    centro_costo_id: centroCosto.id,
-    centro_costo_nombre: centroCosto.nombre,
-    centro_costo_codigo: centroCosto.codigo,
+    centro_negocio_id: centroNegocio.id,
+    centro_negocio_nombre: centroNegocio.nombre,
+    centro_negocio_codigo: centroNegocio.codigo,
     tipo_documento_id: tipoDocumento.id,
     tipo_documento_nombre: tipoDocumento.nombre,
     tipo_documento_codigo: tipoDocumento.codigo,
+    tipo_documento_cuenta_contable: tipoDocumento.cuenta_contable,
     numero_documento: data.numero_documento.trim(),
     tipo_gasto_id: tipoGasto.id,
     tipo_gasto_nombre: tipoGasto.nombre,
-    tipo_gasto_codigo: tipoGasto.codigo,
+    tipo_gasto_cuenta_contable: tipoGasto.cuenta_contable,
     monto: Number(data.monto),
   };
 }
@@ -116,7 +125,7 @@ export async function createGasto(
   await assertRendicionEditable(rendicionId);
   validateAdjuntos(adjuntos);
 
-  const gasto = buildGasto(rendicionId, data);
+  const gasto = await buildGasto(rendicionId, data);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);
 
   await db.transaction('rw', rendicionesTable, gastosTable, adjuntosTable, async () => {
@@ -142,7 +151,7 @@ export async function updateGasto(
   await assertRendicionEditable(current.rendicion_id);
   validateAdjuntos(adjuntos);
 
-  const gasto = buildGasto(current.rendicion_id, data, current);
+  const gasto = await buildGasto(current.rendicion_id, data, current);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);
 
   await db.transaction('rw', rendicionesTable, gastosTable, adjuntosTable, async () => {

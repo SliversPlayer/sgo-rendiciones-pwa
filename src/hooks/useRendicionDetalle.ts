@@ -48,7 +48,13 @@ export function useRendicionDetalle(rendicionId: string) {
     gastos,
     isLoading,
     error,
-    isRendicionValida: gastos.length > 0,
+    isRendicionValida:
+      gastos.length > 0 &&
+      Boolean(
+        rendicion?.tipo_rendicion_id &&
+          rendicion.tipo_rendicion_nombre &&
+          rendicion.tipo_rendicion_cuenta_contable,
+      ),
     isEditable: isRendicionEditable(rendicion),
     removeGasto,
     reload: loadDetalle,

@@ -1,20 +1,21 @@
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { GastoForm } from '../components/GastoForm';
 import { useGastoEditor } from '../hooks/useGastoEditor';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
-interface GastoFormPageProps {
-  rendicionId: string;
-  gastoId?: string;
-  navigateTo: (path: string) => void;
-}
-
-export function GastoFormPage({ rendicionId, gastoId, navigateTo }: GastoFormPageProps) {
+export function GastoFormPage() {
+  const { id: rendicionId, gastoId } = useParams<{ id: string; gastoId?: string }>();
+  const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const { rendicion, initialGasto, isEditing, isLoading, error, isEditable, saveGasto } =
-    useGastoEditor(rendicionId, gastoId);
+    useGastoEditor(rendicionId ?? '', gastoId);
 
-  const goToDetalle = () => navigateTo(`/rendicion/${rendicionId}`);
+  if (!rendicionId) {
+    return <Navigate to="/" replace />;
+  }
+
+  const goToDetalle = () => navigate(`/rendiciones/${rendicionId}`);
   const handleSubmit: typeof saveGasto = async (data, adjuntos) => {
     await saveGasto(data, adjuntos);
     goToDetalle();
@@ -57,7 +58,7 @@ export function GastoFormPage({ rendicionId, gastoId, navigateTo }: GastoFormPag
           <h3>Rendicion no encontrada</h3>
           <p>Vuelve al dashboard y selecciona una rendicion guardada.</p>
           <div className="form-actions">
-            <button type="button" className="button button-secondary" onClick={() => navigateTo('/')}>
+            <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
               Volver
             </button>
           </div>

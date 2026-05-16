@@ -1,86 +1,93 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { useCatalogosBootstrap } from './hooks/useCatalogos';
 import { useAuth } from './hooks/useAuth';
 import { DashboardPage } from './pages/DashboardPage';
 import { GastoFormPage } from './pages/GastoFormPage';
 import { LoginPage } from './pages/LoginPage';
 import { RendicionDetallePage } from './pages/RendicionDetallePage';
 
-export function App() {
+function LoadingShell({ message }: { message: string }) {
+  return (
+    <main className="app-shell">
+      <p className="notice">{message}</p>
+    </main>
+  );
+}
+
+function ProtectedLayout() {
   const { currentUser, loading } = useAuth();
-  const [path, setPath] = useState(() => window.location.pathname);
-
-  useEffect(() => {
-    const handlePopState = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  const route = useMemo(() => parseRoute(path), [path]);
-
-  const navigateTo = (nextPath: string) => {
-    window.history.pushState(null, '', nextPath);
-    setPath(nextPath);
-  };
 
   if (loading) {
+    return <LoadingShell message="Cargando sesion..." />;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}
+
+function PublicLoginRoute() {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingShell message="Cargando sesion..." />;
+  }
+
+  if (currentUser) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <LoginPage />;
+}
+
+function LegacyRendicionRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/rendiciones/${id}` : '/'} replace />;
+}
+
+function LegacyNuevoGastoRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/rendiciones/${id}/gastos/nuevo` : '/'} replace />;
+}
+
+function LegacyEditarGastoRedirect() {
+  const { id, gastoId } = useParams<{ id: string; gastoId: string }>();
+  return <Navigate to={id && gastoId ? `/rendiciones/${id}/gastos/${gastoId}` : '/'} replace />;
+}
+
+export function App() {
+  const catalogos = useCatalogosBootstrap();
+
+  if (catalogos.isLoading) {
+    return <LoadingShell message="Preparando catalogos locales..." />;
+  }
+
+  if (catalogos.error) {
     return (
       <main className="app-shell">
-        <p className="notice">Cargando sesion...</p>
+        <p className="notice notice-error">{catalogos.error}</p>
+        <button type="button" className="button button-primary" onClick={() => void catalogos.reload()}>
+          Reintentar
+        </button>
       </main>
     );
   }
 
-  if (!currentUser) {
-    return <LoginPage />;
-  }
-
-  if (route.name === 'rendicionDetalle') {
-    return <RendicionDetallePage rendicionId={route.rendicionId} navigateTo={navigateTo} />;
-  }
-
-  if (route.name === 'nuevoGasto') {
-    return <GastoFormPage rendicionId={route.rendicionId} navigateTo={navigateTo} />;
-  }
-
-  if (route.name === 'editarGasto') {
-    return (
-      <GastoFormPage
-        rendicionId={route.rendicionId}
-        gastoId={route.gastoId}
-        navigateTo={navigateTo}
-      />
-    );
-  }
-
-  return <DashboardPage navigateTo={navigateTo} />;
-}
-
-type AppRoute =
-  | { name: 'dashboard' }
-  | { name: 'rendicionDetalle'; rendicionId: string }
-  | { name: 'nuevoGasto'; rendicionId: string }
-  | { name: 'editarGasto'; rendicionId: string; gastoId: string };
-
-function parseRoute(path: string): AppRoute {
-  const parts = path.split('/').filter(Boolean);
-
-  if (parts[0] === 'rendicion' && parts[1] && parts.length === 2) {
-    return { name: 'rendicionDetalle', rendicionId: parts[1] };
-  }
-
-  if (parts[0] === 'rendicion' && parts[1] && parts[2] === 'nuevo' && parts.length === 3) {
-    return { name: 'nuevoGasto', rendicionId: parts[1] };
-  }
-
-  if (
-    parts[0] === 'rendicion' &&
-    parts[1] &&
-    parts[2] === 'editar' &&
-    parts[3] &&
-    parts.length === 4
-  ) {
-    return { name: 'editarGasto', rendicionId: parts[1], gastoId: parts[3] };
-  }
-
-  return { name: 'dashboard' };
+  return (
+    <Routes>
+      <Route path="/login" element={<PublicLoginRoute />} />
+      <Route element={<ProtectedLayout />}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/rendiciones/:id" element={<RendicionDetallePage />} />
+        <Route path="/rendiciones/:id/gastos/nuevo" element={<GastoFormPage />} />
+        <Route path="/rendiciones/:id/gastos/:gastoId" element={<GastoFormPage />} />
+        <Route path="/rendicion/:id" element={<LegacyRendicionRedirect />} />
+        <Route path="/rendicion/:id/nuevo" element={<LegacyNuevoGastoRedirect />} />
+        <Route path="/rendicion/:id/editar/:gastoId" element={<LegacyEditarGastoRedirect />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }

@@ -4,6 +4,7 @@ import {
   deleteRendicion,
   getRendiciones,
   getRendicionesStats,
+  refreshUserRendicionesFromRemote,
   updateRendicion,
   type RendicionesStats,
 } from '../services/rendicionesService';
@@ -27,6 +28,10 @@ export function useRendiciones() {
   const loadRendiciones = useCallback(async () => {
     try {
       setError(null);
+      if (currentUser && navigator.onLine) {
+        await refreshUserRendicionesFromRemote(currentUser.uid).catch(() => undefined);
+      }
+
       const [storedRendiciones, storedStats] = await Promise.all([
         getRendiciones(),
         getRendicionesStats(),
@@ -38,7 +43,7 @@ export function useRendiciones() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     void loadRendiciones();

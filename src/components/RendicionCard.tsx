@@ -34,6 +34,12 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
         <p className="card-muted">Sin glosa de grupo</p>
       )}
 
+      {rendicion.observacion_rechazo ? (
+        <p className="notice notice-warning">
+          Observacion rechazo: {rendicion.observacion_rechazo}
+        </p>
+      ) : null}
+
       <dl className="card-meta">
         <div>
           <dt>Tipo</dt>
@@ -47,6 +53,18 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
           <dt>Sync</dt>
           <dd>{getSyncStatusLabel(rendicion.sync_status ?? 'LOCAL')}</dd>
         </div>
+        {rendicion.fecha_aprobacion ? (
+          <div>
+            <dt>Aprobada</dt>
+            <dd>{formatDisplayDate(rendicion.fecha_aprobacion)}</dd>
+          </div>
+        ) : null}
+        {rendicion.fecha_rechazo ? (
+          <div>
+            <dt>Rechazada</dt>
+            <dd>{formatDisplayDate(rendicion.fecha_rechazo)}</dd>
+          </div>
+        ) : null}
       </dl>
 
       <div className="card-actions">

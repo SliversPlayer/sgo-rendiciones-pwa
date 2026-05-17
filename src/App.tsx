@@ -1,10 +1,13 @@
 import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
 import { useCatalogosBootstrap } from './hooks/useCatalogos';
 import { useAuth } from './hooks/useAuth';
+import { AdminPage } from './pages/AdminPage';
+import { AdminRendicionDetallePage } from './pages/AdminRendicionDetallePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { GastoFormPage } from './pages/GastoFormPage';
 import { LoginPage } from './pages/LoginPage';
 import { RendicionDetallePage } from './pages/RendicionDetallePage';
+import { isAdminUser } from './utils/roles';
 
 function LoadingShell({ message }: { message: string }) {
   return (
@@ -40,6 +43,27 @@ function PublicLoginRoute() {
   }
 
   return <LoginPage />;
+}
+
+function AdminRoute() {
+  const { userProfile, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingShell message="Cargando sesion..." />;
+  }
+
+  if (!isAdminUser(userProfile)) {
+    return (
+      <main className="app-shell">
+        <div className="empty-state">
+          <h3>Acceso no autorizado</h3>
+          <p>No tienes permisos para acceder al panel administrativo.</p>
+        </div>
+      </main>
+    );
+  }
+
+  return <Outlet />;
 }
 
 function LegacyRendicionRedirect() {
@@ -83,6 +107,10 @@ export function App() {
         <Route path="/rendiciones/:id" element={<RendicionDetallePage />} />
         <Route path="/rendiciones/:id/gastos/nuevo" element={<GastoFormPage />} />
         <Route path="/rendiciones/:id/gastos/:gastoId" element={<GastoFormPage />} />
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/rendiciones/:id" element={<AdminRendicionDetallePage />} />
+        </Route>
         <Route path="/rendicion/:id" element={<LegacyRendicionRedirect />} />
         <Route path="/rendicion/:id/nuevo" element={<LegacyNuevoGastoRedirect />} />
         <Route path="/rendicion/:id/editar/:gastoId" element={<LegacyEditarGastoRedirect />} />

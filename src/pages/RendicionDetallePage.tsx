@@ -54,7 +54,7 @@ export function RendicionDetallePage() {
         <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
           Volver
         </button>
-        {rendicion && rendicion.estado !== 'ENVIADA' ? (
+        {rendicion && rendicion.estado !== 'ENVIADA' && rendicion.estado !== 'APROBADA' ? (
           <button
             type="button"
             className="button button-primary"
@@ -129,6 +129,18 @@ export function RendicionDetallePage() {
 
           {rendicion.sync_error ? (
             <p className="notice notice-error">{rendicion.sync_error}</p>
+          ) : null}
+
+          {rendicion.observacion_rechazo ? (
+            <p className="notice notice-warning">
+              Observacion de rechazo: {rendicion.observacion_rechazo}
+            </p>
+          ) : null}
+
+          {rendicion.fecha_aprobacion ? (
+            <p className="notice notice-success">
+              Rendicion aprobada por {rendicion.usuario_aprobacion ?? 'administracion'}.
+            </p>
           ) : null}
 
           <div className="section-heading with-action">

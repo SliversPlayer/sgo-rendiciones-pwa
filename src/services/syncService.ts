@@ -219,25 +219,29 @@ export async function sendRendicion(rendicionId: string, user: User | null): Pro
     const batch = writeBatch(firestoreDb);
     const rendicionRef = doc(firestoreDb, 'rendiciones', rendicion.id);
 
-    batch.set(rendicionRef, {
-      id: rendicion.id,
-      usuario_id: user.uid,
-      usuario_email: user.email ?? rendicion.usuario_email ?? '',
-      titulo: rendicion.titulo,
-      glosa: rendicion.glosa_grupo ?? '',
-      tipo_rendicion_id: rendicion.tipo_rendicion_id,
-      tipo_rendicion_nombre: rendicion.tipo_rendicion_nombre,
-      tipo_rendicion_cuenta_contable: rendicion.tipo_rendicion_cuenta_contable,
-      estado: 'ENVIADA',
-      sync_status: 'SYNCED',
-      fecha_creacion: rendicion.fecha_creacion,
-      fecha_actualizacion: rendicion.fecha_actualizacion,
-      fecha_envio: fechaEnvio,
-      total_gastos: totalGastos,
-      monto_total: montoTotal,
-      created_at_remote: serverTimestamp(),
-      updated_at_remote: serverTimestamp(),
-    });
+    batch.set(
+      rendicionRef,
+      {
+        id: rendicion.id,
+        usuario_id: user.uid,
+        usuario_email: user.email ?? rendicion.usuario_email ?? '',
+        titulo: rendicion.titulo,
+        glosa: rendicion.glosa_grupo ?? '',
+        tipo_rendicion_id: rendicion.tipo_rendicion_id,
+        tipo_rendicion_nombre: rendicion.tipo_rendicion_nombre,
+        tipo_rendicion_cuenta_contable: rendicion.tipo_rendicion_cuenta_contable,
+        estado: 'ENVIADA',
+        sync_status: 'SYNCED',
+        fecha_creacion: rendicion.fecha_creacion,
+        fecha_actualizacion: rendicion.fecha_actualizacion,
+        fecha_envio: fechaEnvio,
+        total_gastos: totalGastos,
+        monto_total: montoTotal,
+        created_at_remote: serverTimestamp(),
+        updated_at_remote: serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     for (const { gasto } of gastos) {
       const remoteGasto = withNormalizedSnapshots(gasto);

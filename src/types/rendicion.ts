@@ -23,6 +23,11 @@ export interface Rendicion {
   fecha_creacion: string;
   fecha_actualizacion: string;
   fecha_envio?: string;
+  fecha_aprobacion?: string;
+  usuario_aprobacion?: string;
+  fecha_rechazo?: string;
+  usuario_rechazo?: string;
+  observacion_rechazo?: string;
   sync_error?: string;
 }
 

@@ -9,6 +9,7 @@ import { useRendiciones } from '../hooks/useRendiciones';
 import type { Rendicion, RendicionEstado, RendicionFormData } from '../types/rendicion';
 import { formatCurrency } from '../utils/format';
 import { getEstadoLabel, isRendicionEditable } from '../utils/rendicionStatus';
+import { isAdminUser } from '../utils/roles';
 
 type ViewMode = 'list' | 'create' | 'edit';
 type EstadoFilter = 'TODAS' | RendicionEstado;
@@ -116,6 +117,15 @@ export function DashboardPage() {
         </div>
         <div className="header-actions">
           <ConnectionStatus isOnline={isOnline} />
+          {isAdminUser(userProfile) ? (
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => navigate('/admin')}
+            >
+              Panel admin
+            </button>
+          ) : null}
           <button type="button" className="button button-secondary" onClick={() => void logout()}>
             Cerrar sesion
           </button>
@@ -139,7 +149,7 @@ export function DashboardPage() {
           <div className="section-heading with-action">
             <div>
               <p className="eyebrow">Dashboard</p>
-              <h2 id="rendiciones-title">Rendiciones guardadas</h2>
+              <h2 id="rendiciones-title">Mis rendiciones</h2>
             </div>
             <button
               type="button"

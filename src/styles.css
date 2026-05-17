@@ -382,6 +382,11 @@ button {
   background: #e6f4ea;
 }
 
+.notice-warning {
+  color: #8a5a00;
+  background: #fff4d6;
+}
+
 .auth-shell {
   display: grid;
   min-height: 100vh;
@@ -636,6 +641,42 @@ button {
   margin-top: 14px;
 }
 
+.admin-summary {
+  margin-bottom: 22px;
+}
+
+.admin-history {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.admin-history div,
+.admin-snapshots div {
+  min-width: 0;
+}
+
+.admin-history dt {
+  color: #62736f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-history dd {
+  margin: 4px 0 0;
+}
+
+.admin-actions-panel {
+  margin-bottom: 22px;
+}
+
+.attachment-links {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .skeleton-grid {
   display: grid;
   gap: 14px;
@@ -757,6 +798,11 @@ button {
   .gasto-main {
     grid-template-columns: 1fr auto;
     align-items: center;
+  }
+
+  .admin-snapshots,
+  .attachment-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

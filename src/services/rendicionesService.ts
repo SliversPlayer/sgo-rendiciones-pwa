@@ -1,5 +1,7 @@
 import { adjuntosTable, db, gastosTable, rendicionesTable } from './db';
 import { getTipoRendicionById } from './catalogos';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { firestoreDb } from './firebase/firebase';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
 import { nowIso } from '../utils/date';
 import { createId } from '../utils/id';
@@ -18,6 +20,56 @@ export async function getRendiciones(): Promise<Rendicion[]> {
 
 export async function getRendicionById(id: string): Promise<Rendicion | undefined> {
   return rendicionesTable.get(id);
+}
+
+function getRemoteAdminFields(remote: Partial<Rendicion>) {
+  return {
+    fecha_aprobacion: remote.fecha_aprobacion,
+    usuario_aprobacion: remote.usuario_aprobacion,
+    fecha_rechazo: remote.fecha_rechazo,
+    usuario_rechazo: remote.usuario_rechazo,
+    observacion_rechazo: remote.observacion_rechazo,
+  };
+}
+
+export async function refreshUserRendicionesFromRemote(usuarioId: string): Promise<void> {
+  const remoteQuery = query(
+    collection(firestoreDb, 'rendiciones'),
+    where('usuario_id', '==', usuarioId),
+  );
+  const snapshot = await getDocs(remoteQuery);
+
+  await db.transaction('rw', rendicionesTable, async () => {
+    for (const documentSnapshot of snapshot.docs) {
+      const remote = documentSnapshot.data() as Partial<Rendicion>;
+      const local = await rendicionesTable.get(documentSnapshot.id);
+
+      if (!local || !remote.estado) {
+        continue;
+      }
+
+      if (remote.estado === 'APROBADA') {
+        await rendicionesTable.update(local.id, {
+          estado: 'APROBADA',
+          sync_status: 'SYNCED',
+          fecha_actualizacion: nowIso(),
+          sync_error: undefined,
+          ...getRemoteAdminFields(remote),
+        });
+        continue;
+      }
+
+      if (remote.estado === 'RECHAZADA') {
+        await rendicionesTable.update(local.id, {
+          estado: 'RECHAZADA',
+          sync_status: 'LOCAL',
+          fecha_actualizacion: nowIso(),
+          sync_error: undefined,
+          ...getRemoteAdminFields(remote),
+        });
+      }
+    }
+  });
 }
 
 export async function getRendicionesStats(): Promise<RendicionesStats> {

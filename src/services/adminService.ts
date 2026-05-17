@@ -34,6 +34,7 @@ function normalizeRendicion(id: string, data: Partial<AdminRendicion>): AdminRen
   return {
     id,
     usuario_id: data.usuario_id ?? '',
+    usuario_nombre: data.usuario_nombre,
     usuario_email: data.usuario_email,
     titulo: data.titulo ?? 'Sin titulo',
     glosa_grupo: data.glosa_grupo ?? data.glosa,

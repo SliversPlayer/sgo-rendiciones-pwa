@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAdminRendicionDetalle } from '../hooks/useAdminRendiciones';
 import { formatDisplayDate } from '../utils/date';
 import { formatCurrency } from '../utils/format';
+import { getRendicionOwnerLabel } from '../utils/rendicionOwner';
 import { getEstadoLabel } from '../utils/rendicionStatus';
 
 export function AdminRendicionDetallePage() {
@@ -69,7 +70,10 @@ export function AdminRendicionDetallePage() {
             <div>
               <p className="eyebrow">Estado</p>
               <h2 id="admin-summary-title">{getEstadoLabel(rendicion.estado)}</h2>
-              <p className="card-muted">Usuario: {rendicion.usuario_email || rendicion.usuario_id}</p>
+              <div className="owner-summary">
+                <p className="eyebrow">Dueno</p>
+                <strong>{getRendicionOwnerLabel(rendicion)}</strong>
+              </div>
               <p className="card-muted">Tipo: {rendicion.tipo_rendicion_nombre || 'Sin tipo'}</p>
             </div>
 

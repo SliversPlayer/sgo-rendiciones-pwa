@@ -32,6 +32,15 @@ button {
   border: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 .app-shell {
   width: min(100%, 1120px);
   margin: 0 auto;
@@ -179,6 +188,56 @@ button {
   box-shadow: 0 0 0 3px rgba(63, 127, 118, 0.14);
 }
 
+.view-toggle-field {
+  display: grid;
+  gap: 7px;
+  color: #213b40;
+  font-weight: 800;
+}
+
+.segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 6px;
+  justify-self: start;
+  border: 1px solid #cbd8d4;
+  border-radius: 8px;
+  padding: 4px;
+  background: #ffffff;
+}
+
+.segmented-control button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  color: #12343b;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.segmented-control button:focus-visible {
+  outline: 3px solid rgba(63, 127, 118, 0.28);
+  outline-offset: 2px;
+}
+
+.segmented-control button.is-active {
+  background: #12343b;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(18, 52, 59, 0.14);
+}
+
+.view-toggle-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
 .section-heading {
   margin-bottom: 18px;
 }
@@ -275,13 +334,21 @@ button {
 }
 
 .status-pill {
+  display: inline-flex;
+  min-width: 76px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 7px 12px;
   background: #e6f4ea;
   color: #17623a;
   font-size: 0.75rem;
   font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .status-enviada,
@@ -645,6 +712,19 @@ button {
   margin-bottom: 22px;
 }
 
+.owner-summary {
+  display: grid;
+  gap: 3px;
+  margin-top: 14px;
+}
+
+.owner-summary strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #17252a;
+  font-size: 1.05rem;
+}
+
 .admin-history {
   display: grid;
   gap: 10px;
@@ -675,6 +755,70 @@ button {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(18, 52, 59, 0.08);
+}
+
+.admin-rendiciones-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.admin-rendiciones-table th,
+.admin-rendiciones-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #e8efed;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-rendiciones-table th {
+  color: #62736f;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-rendiciones-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #1f2933;
+}
+
+.admin-rendiciones-table tbody tr:hover {
+  background: #f8fbfa;
+}
+
+.admin-rendiciones-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.numeric-cell {
+  white-space: nowrap;
+}
+
+.status-cell {
+  white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.table-actions .button {
+  min-height: 36px;
+  padding-inline: 12px;
+  white-space: nowrap;
 }
 
 .skeleton-grid {
@@ -712,8 +856,77 @@ button {
   .empty-state,
   .form-panel,
   .detail-summary,
-  .gasto-item {
+  .gasto-item,
+  .admin-rendiciones-table tr {
     box-shadow: 0 8px 18px rgba(18, 52, 59, 0.06);
+  }
+
+  .admin-table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .admin-rendiciones-table {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+
+  .admin-rendiciones-table,
+  .admin-rendiciones-table tbody,
+  .admin-rendiciones-table tr,
+  .admin-rendiciones-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-rendiciones-table thead {
+    display: none;
+  }
+
+  .admin-rendiciones-table tr {
+    border: 1px solid #d9e2df;
+    border-radius: 8px;
+    background: #ffffff;
+  }
+
+  .admin-rendiciones-table td {
+    display: grid;
+    grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    border-bottom: 1px solid #eef5f3;
+    padding: 10px 12px;
+  }
+
+  .admin-rendiciones-table td::before {
+    content: attr(data-label);
+    color: #62736f;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .admin-rendiciones-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .numeric-cell {
+    white-space: normal;
+  }
+
+  .table-actions .button {
+    width: 100%;
+  }
+
+  .segmented-control {
+    grid-template-columns: repeat(2, 48px);
+  }
+
+  .segmented-control button {
+    min-height: 44px;
   }
 
   .sticky-actions {

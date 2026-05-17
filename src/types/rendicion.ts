@@ -12,6 +12,7 @@ export type RendicionSyncStatus = 'LOCAL' | 'PENDING' | 'SYNCED' | 'ERROR';
 export interface Rendicion {
   id: string;
   usuario_id: string;
+  usuario_nombre?: string;
   usuario_email?: string;
   titulo: string;
   glosa_grupo?: string;

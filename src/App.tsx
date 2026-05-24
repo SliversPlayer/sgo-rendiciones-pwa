@@ -53,14 +53,7 @@ function AdminRoute() {
   }
 
   if (!isAdminUser(userProfile)) {
-    return (
-      <main className="app-shell">
-        <div className="empty-state">
-          <h3>Acceso no autorizado</h3>
-          <p>No tienes permisos para acceder al panel administrativo.</p>
-        </div>
-      </main>
-    );
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

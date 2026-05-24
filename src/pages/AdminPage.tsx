@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminRendiciones } from '../hooks/useAdminRendiciones';
 import type { AdminEstadoFilter } from '../types/admin';
 import { formatDisplayDate } from '../utils/date';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatTipoRendicionNombre } from '../utils/format';
 import { getRendicionOwnerLabel } from '../utils/rendicionOwner';
 import { getEstadoLabel } from '../utils/rendicionStatus';
 
@@ -11,6 +11,38 @@ const estadosAdmin: AdminEstadoFilter[] = ['ENVIADA', 'APROBADA', 'RECHAZADA', '
 const adminViewModeKey = 'admin-rendiciones-view-mode';
 
 type AdminViewMode = 'cards' | 'list';
+type ListFilters = {
+  owner: string;
+  title: string;
+  type: string;
+  status: string;
+  sentFrom: string;
+  sentTo: string;
+  amountMin: string;
+  amountMax: string;
+};
+
+const emptyListFilters: ListFilters = {
+  owner: '',
+  title: '',
+  type: '',
+  status: '',
+  sentFrom: '',
+  sentTo: '',
+  amountMin: '',
+  amountMax: '',
+};
+
+function getActiveListFilterCount(filters: ListFilters): number {
+  return [
+    filters.owner.trim(),
+    filters.title.trim(),
+    filters.type,
+    filters.status,
+    filters.sentFrom || filters.sentTo,
+    filters.amountMin || filters.amountMax,
+  ].filter(Boolean).length;
+}
 
 function CardsIcon() {
   return (
@@ -72,14 +104,121 @@ function getInitialAdminViewMode(): AdminViewMode {
   return window.matchMedia('(max-width: 719px)').matches ? 'cards' : 'list';
 }
 
+function normalizeFilterText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function getDateInputValue(value?: string): string {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 10);
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
 export function AdminPage() {
   const navigate = useNavigate();
   const { estado, setEstado, rendiciones, isLoading, error, reload } = useAdminRendiciones();
   const [viewMode, setViewMode] = useState<AdminViewMode>(getInitialAdminViewMode);
+  const [listFilters, setListFilters] = useState<ListFilters>(emptyListFilters);
+  const [draftListFilters, setDraftListFilters] = useState<ListFilters>(emptyListFilters);
+  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
+
+  const typeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(rendiciones.map((rendicion) => rendicion.tipo_rendicion_nombre).filter(Boolean)),
+      ).sort((first, second) => first.localeCompare(second, 'es')),
+    [rendiciones],
+  );
+
+  const visibleRendiciones = useMemo(() => {
+    const ownerFilter = normalizeFilterText(listFilters.owner.trim());
+    const titleFilter = normalizeFilterText(listFilters.title.trim());
+    const minAmount = listFilters.amountMin === '' ? null : Number(listFilters.amountMin);
+    const maxAmount = listFilters.amountMax === '' ? null : Number(listFilters.amountMax);
+
+    return rendiciones.filter((rendicion) => {
+      const owner = normalizeFilterText(getRendicionOwnerLabel(rendicion));
+      const title = normalizeFilterText(rendicion.titulo);
+      const sentDate = getDateInputValue(rendicion.fecha_envio);
+      const amount = rendicion.monto_total ?? 0;
+
+      if (ownerFilter && !owner.includes(ownerFilter)) {
+        return false;
+      }
+
+      if (titleFilter && !title.includes(titleFilter)) {
+        return false;
+      }
+
+      if (listFilters.type && rendicion.tipo_rendicion_nombre !== listFilters.type) {
+        return false;
+      }
+
+      if (listFilters.status && rendicion.estado !== listFilters.status) {
+        return false;
+      }
+
+      if (listFilters.sentFrom && (!sentDate || sentDate < listFilters.sentFrom)) {
+        return false;
+      }
+
+      if (listFilters.sentTo && (!sentDate || sentDate > listFilters.sentTo)) {
+        return false;
+      }
+
+      if (minAmount !== null && Number.isFinite(minAmount) && amount < minAmount) {
+        return false;
+      }
+
+      if (maxAmount !== null && Number.isFinite(maxAmount) && amount > maxAmount) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [listFilters, rendiciones]);
+
+  const activeFilterCount = getActiveListFilterCount(listFilters);
+  const draftActiveFilterCount = getActiveListFilterCount(draftListFilters);
+  const hasListFilters = activeFilterCount > 0;
+  const filtersButtonLabel = `Filtros${activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}`;
 
   const changeViewMode = (nextViewMode: AdminViewMode) => {
     setViewMode(nextViewMode);
     saveAdminViewMode(nextViewMode);
+  };
+
+  const openFiltersModal = () => {
+    setDraftListFilters(listFilters);
+    setIsFiltersModalOpen(true);
+  };
+
+  const updateDraftListFilter = (key: keyof ListFilters, value: string) => {
+    setDraftListFilters((currentFilters) => ({
+      ...currentFilters,
+      [key]: value,
+    }));
+  };
+
+  const applyListFilters = () => {
+    setListFilters(draftListFilters);
+    setIsFiltersModalOpen(false);
+  };
+
+  const clearListFilters = () => {
+    setListFilters(emptyListFilters);
+    setDraftListFilters(emptyListFilters);
   };
 
   const openDetalle = (rendicionId: string) => {
@@ -148,6 +287,26 @@ export function AdminPage() {
               </button>
             </div>
           </div>
+          <div className="filter-controls-field" aria-label="Filtros del listado">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={openFiltersModal}
+              aria-haspopup="dialog"
+              aria-expanded={isFiltersModalOpen}
+            >
+              {filtersButtonLabel}
+            </button>
+            {hasListFilters ? (
+              <button
+                type="button"
+                className="button button-subtle button-small"
+                onClick={clearListFilters}
+              >
+                Limpiar filtros
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="section-heading">
@@ -165,9 +324,16 @@ export function AdminPage() {
           </div>
         ) : null}
 
-        {!isLoading && rendiciones.length > 0 && viewMode === 'cards' ? (
+        {!isLoading && rendiciones.length > 0 && visibleRendiciones.length === 0 ? (
+          <div className="empty-state">
+            <h3>Sin resultados</h3>
+            <p>Ajusta los filtros o limpia los filtros activos.</p>
+          </div>
+        ) : null}
+
+        {!isLoading && rendiciones.length > 0 && viewMode === 'cards' && visibleRendiciones.length > 0 ? (
           <div className="rendiciones-grid">
-            {rendiciones.map((rendicion) => (
+            {visibleRendiciones.map((rendicion) => (
               <article className="rendicion-card" key={rendicion.id}>
                 <div className="card-header">
                   <div>
@@ -182,7 +348,12 @@ export function AdminPage() {
                 <dl className="card-meta">
                   <div>
                     <dt>Tipo</dt>
-                    <dd>{rendicion.tipo_rendicion_nombre || 'Sin tipo'}</dd>
+                    <dd>
+                      {formatTipoRendicionNombre(
+                        rendicion.tipo_rendicion_id,
+                        rendicion.tipo_rendicion_nombre,
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt>Enviada</dt>
@@ -206,7 +377,7 @@ export function AdminPage() {
                     className="button button-primary"
                     onClick={() => openDetalle(rendicion.id)}
                   >
-                    Abrir detalle
+                    Revisar
                   </button>
                 </div>
               </article>
@@ -214,7 +385,7 @@ export function AdminPage() {
           </div>
         ) : null}
 
-        {!isLoading && rendiciones.length > 0 && viewMode === 'list' ? (
+        {!isLoading && rendiciones.length > 0 && viewMode === 'list' && visibleRendiciones.length > 0 ? (
           <div className="admin-table-wrap">
             <table className="admin-rendiciones-table">
               <thead>
@@ -229,12 +400,15 @@ export function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {rendiciones.map((rendicion) => (
+                {visibleRendiciones.map((rendicion) => (
                   <tr key={rendicion.id}>
                     <td data-label="Dueno">{getRendicionOwnerLabel(rendicion)}</td>
                     <td data-label="Titulo">{rendicion.titulo}</td>
                     <td data-label="Tipo de rendicion">
-                      {rendicion.tipo_rendicion_nombre || 'Sin tipo'}
+                      {formatTipoRendicionNombre(
+                        rendicion.tipo_rendicion_id,
+                        rendicion.tipo_rendicion_nombre,
+                      )}
                     </td>
                     <td data-label="Estado" className="status-cell">
                       <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
@@ -254,17 +428,8 @@ export function AdminPage() {
                           className="button button-primary button-small"
                           onClick={() => openDetalle(rendicion.id)}
                         >
-                          Abrir detalle
+                          Revisar
                         </button>
-                        {rendicion.estado === 'ENVIADA' ? (
-                          <button
-                            type="button"
-                            className="button button-secondary button-small"
-                            onClick={() => openDetalle(rendicion.id)}
-                          >
-                            Aprobar/Rechazar
-                          </button>
-                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -274,6 +439,175 @@ export function AdminPage() {
           </div>
         ) : null}
       </section>
+
+      {isFiltersModalOpen ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsFiltersModalOpen(false);
+            }
+          }}
+        >
+          <section
+            className="filter-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-filters-title"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setIsFiltersModalOpen(false);
+              }
+            }}
+          >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                applyListFilters();
+              }}
+            >
+              <div className="filter-modal-header">
+                <div>
+                  <p className="eyebrow">Filtros</p>
+                  <h2 id="admin-filters-title">Filtrar rendiciones</h2>
+                  {draftActiveFilterCount > 0 ? (
+                    <p className="active-filter-note">
+                      {draftActiveFilterCount} filtros activos
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="modal-close-button"
+                  onClick={() => setIsFiltersModalOpen(false)}
+                  aria-label="Cerrar filtros"
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="filter-modal-body">
+                <div className="filter-form-grid">
+                  <label>
+                    <span>Dueno</span>
+                    <input
+                      autoFocus
+                      type="search"
+                      value={draftListFilters.owner}
+                      onChange={(event) => updateDraftListFilter('owner', event.target.value)}
+                      placeholder="Filtrar dueno"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Titulo</span>
+                    <input
+                      type="search"
+                      value={draftListFilters.title}
+                      onChange={(event) => updateDraftListFilter('title', event.target.value)}
+                      placeholder="Filtrar titulo"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Tipo de rendicion</span>
+                    <select
+                      value={draftListFilters.type}
+                      onChange={(event) => updateDraftListFilter('type', event.target.value)}
+                    >
+                      <option value="">Todos</option>
+                      {typeOptions.map((type) => (
+                        <option key={type} value={type}>
+                          {formatTipoRendicionNombre(undefined, type)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Estado</span>
+                    <select
+                      value={draftListFilters.status}
+                      onChange={(event) => updateDraftListFilter('status', event.target.value)}
+                    >
+                      <option value="">Todos</option>
+                      {estadosAdmin
+                        .filter((item) => item !== 'TODAS')
+                        .map((item) => (
+                          <option key={item} value={item}>
+                            {getEstadoLabel(item)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+
+                  <fieldset className="filter-fieldset">
+                    <legend>Fecha envio</legend>
+                    <div className="range-filter">
+                      <input
+                        type="date"
+                        value={draftListFilters.sentFrom}
+                        onChange={(event) => updateDraftListFilter('sentFrom', event.target.value)}
+                        aria-label="Fecha envio desde"
+                      />
+                      <input
+                        type="date"
+                        value={draftListFilters.sentTo}
+                        onChange={(event) => updateDraftListFilter('sentTo', event.target.value)}
+                        aria-label="Fecha envio hasta"
+                      />
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="filter-fieldset">
+                    <legend>Monto total</legend>
+                    <div className="range-filter">
+                      <input
+                        type="number"
+                        min="0"
+                        value={draftListFilters.amountMin}
+                        onChange={(event) => updateDraftListFilter('amountMin', event.target.value)}
+                        placeholder="Min"
+                        aria-label="Monto minimo"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        value={draftListFilters.amountMax}
+                        onChange={(event) => updateDraftListFilter('amountMax', event.target.value)}
+                        placeholder="Max"
+                        aria-label="Monto maximo"
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+
+              <div className="filter-modal-actions">
+                <button
+                  type="button"
+                  className="button button-subtle"
+                  onClick={clearListFilters}
+                  disabled={!hasListFilters && draftActiveFilterCount === 0}
+                >
+                  Limpiar filtros
+                </button>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setIsFiltersModalOpen(false)}
+                >
+                  Cerrar
+                </button>
+                <button type="submit" className="button button-primary">
+                  Aplicar
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

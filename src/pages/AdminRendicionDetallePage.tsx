@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAdminRendicionDetalle } from '../hooks/useAdminRendiciones';
 import { formatDisplayDate } from '../utils/date';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatTipoRendicionNombre } from '../utils/format';
 import { getRendicionOwnerLabel } from '../utils/rendicionOwner';
 import { getEstadoLabel } from '../utils/rendicionStatus';
 
@@ -74,7 +74,13 @@ export function AdminRendicionDetallePage() {
                 <p className="eyebrow">Dueno</p>
                 <strong>{getRendicionOwnerLabel(rendicion)}</strong>
               </div>
-              <p className="card-muted">Tipo: {rendicion.tipo_rendicion_nombre || 'Sin tipo'}</p>
+              <p className="card-muted">
+                Tipo:{' '}
+                {formatTipoRendicionNombre(
+                  rendicion.tipo_rendicion_id,
+                  rendicion.tipo_rendicion_nombre,
+                )}
+              </p>
             </div>
 
             <dl className="card-meta">

@@ -139,22 +139,15 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <p className="field-help">{totalAdjuntosLabel}</p>
 
           <div className="attachment-actions">
-            <label className={`button button-secondary file-button ${canAddAdjuntos ? '' : 'is-disabled'}`}>
-              Tomar foto
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                capture="environment"
-                onChange={handleFileChange}
-                disabled={!canAddAdjuntos}
-              />
-            </label>
-
-            <label className={`button button-secondary file-button ${canAddAdjuntos ? '' : 'is-disabled'}`}>
-              Seleccionar archivo
+            <label
+              className={`button button-secondary file-button ${canAddAdjuntos ? '' : 'is-disabled'}`}
+              aria-disabled={!canAddAdjuntos}
+            >
+              Agregar adjunto
               <input
                 type="file"
                 accept="image/jpeg,image/png,application/pdf"
+                multiple
                 onChange={handleFileChange}
                 disabled={!canAddAdjuntos}
               />
@@ -176,9 +169,7 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="card-muted">Agrega entre 1 y 2 comprobantes.</p>
-          )}
+          ) : null}
         </fieldset>
 
         {formError ? <p className="form-error">{formError}</p> : null}

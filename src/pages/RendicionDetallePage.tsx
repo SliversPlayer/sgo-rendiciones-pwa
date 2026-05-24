@@ -6,6 +6,7 @@ import { useRendicionDetalle } from '../hooks/useRendicionDetalle';
 import { useRendicionSync } from '../hooks/useRendicionSync';
 import type { Gasto } from '../types/gasto';
 import { formatDisplayDate } from '../utils/date';
+import { formatTipoRendicionNombre } from '../utils/format';
 import { getEstadoLabel, getSyncStatusLabel } from '../utils/rendicionStatus';
 
 export function RendicionDetallePage() {
@@ -104,7 +105,12 @@ export function RendicionDetallePage() {
                 {getSyncStatusLabel(rendicion.sync_status ?? 'LOCAL')}
               </p>
               <p className="card-muted">
-                Tipo: {rendicion.tipo_rendicion_nombre || 'Sin tipo de rendicion'}
+                Tipo:{' '}
+                {formatTipoRendicionNombre(
+                  rendicion.tipo_rendicion_id,
+                  rendicion.tipo_rendicion_nombre,
+                  'Sin tipo de rendicion',
+                )}
               </p>
             </div>
             <dl className="card-meta">

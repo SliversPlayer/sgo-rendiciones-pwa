@@ -56,7 +56,7 @@ function parseCsvLine(line: string): string[] {
 
 function parseCsv(content: string): CsvRow[] {
   const [headerLine, ...rows] = content.trim().split(/\r?\n/);
-  const headers = parseCsvLine(headerLine);
+  const headers = parseCsvLine(headerLine).map((header) => header.replace(/^\uFEFF/, ''));
 
   return rows
     .filter((row) => row.trim().length > 0)
@@ -109,6 +109,12 @@ function parseTiposGasto(): TipoGasto[] {
     cuenta_contable: row.cuenta_contable,
     activo: parseActivo(row.activo),
   }));
+}
+
+async function seedTiposRendicionIfEmpty(): Promise<void> {
+  if ((await tiposRendicionTable.count()) === 0) {
+    await tiposRendicionTable.bulkPut(parseTiposRendicion());
+  }
 }
 
 async function seedCatalogos(): Promise<void> {
@@ -175,6 +181,7 @@ export async function getTiposDocumento(): Promise<TipoDocumento[]> {
 
 export async function getTiposRendicion(): Promise<TipoRendicion[]> {
   await seedCatalogosIfNeeded();
+  await seedTiposRendicionIfEmpty();
   return getActiveCatalogo(() => tiposRendicionTable.toArray());
 }
 
@@ -209,6 +216,7 @@ export async function getTipoDocumentoById(id: string): Promise<TipoDocumento | 
 
 export async function getTipoRendicionById(id: string): Promise<TipoRendicion | undefined> {
   await seedCatalogosIfNeeded();
+  await seedTiposRendicionIfEmpty();
   return tiposRendicionTable.get(id);
 }
 

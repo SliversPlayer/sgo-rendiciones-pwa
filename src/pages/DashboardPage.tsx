@@ -115,7 +115,7 @@ export function DashboardPage() {
             {userProfile?.nombre ?? 'Usuario'} - {userProfile?.email}
           </p>
         </div>
-        <div className="header-actions">
+        <div className="header-actions dashboard-header-actions">
           <ConnectionStatus isOnline={isOnline} />
           {isAdminUser(userProfile) ? (
             <button

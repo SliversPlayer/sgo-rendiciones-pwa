@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useTiposRendicion } from '../hooks/useCatalogos';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
+import { formatTipoRendicionNombre } from '../utils/format';
 
 interface RendicionFormProps {
   initialRendicion?: Rendicion;
@@ -103,7 +104,7 @@ export function RendicionForm({ initialRendicion, onSubmit, onCancel }: Rendicio
                   onChange={(event) => setTipoRendicionId(event.target.value)}
                   disabled={isCatalogosLoading}
                 />
-                <span>{tipo.nombre}</span>
+                <span>{formatTipoRendicionNombre(tipo.id, tipo.nombre)}</span>
               </label>
             ))}
           </div>

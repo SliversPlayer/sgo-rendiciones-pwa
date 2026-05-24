@@ -60,6 +60,16 @@ button {
   align-content: start;
 }
 
+.dashboard-header-actions {
+  width: 100%;
+}
+
+.dashboard-header-actions > .button,
+.dashboard-header-actions > .connection-status {
+  width: 100%;
+  justify-self: stretch;
+}
+
 .app-header h1 {
   margin: 0;
   color: #12343b;
@@ -97,9 +107,12 @@ button {
 
 .connection-status {
   display: inline-flex;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
+  align-self: start;
   justify-content: center;
+  justify-self: start;
   gap: 10px;
   padding: 10px 14px;
   border: 1px solid #d9e2df;
@@ -107,6 +120,7 @@ button {
   background: #ffffff;
   color: #263238;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .connection-dot {
@@ -238,6 +252,17 @@ button {
   stroke-width: 1.8;
 }
 
+.filter-controls-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.filter-controls-field .button {
+  min-height: 44px;
+}
+
 .section-heading {
   margin-bottom: 18px;
 }
@@ -293,6 +318,16 @@ button {
 .button-secondary {
   background: #e8efed;
   color: #12343b;
+}
+
+.button-subtle {
+  background: transparent;
+  color: #51766d;
+  box-shadow: none;
+}
+
+.button-subtle:hover {
+  background: #eef5f3;
 }
 
 .button-danger {
@@ -583,7 +618,7 @@ button {
 
 .adjuntos-fieldset {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
   margin: 0;
   border: 1px solid #d9e2df;
@@ -598,20 +633,34 @@ button {
 }
 
 .field-help {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
   margin: 0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #eef5f3;
   color: #52616b;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .attachment-actions {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
 }
 
 .file-button {
   position: relative;
+  width: 100%;
   overflow: hidden;
+}
+
+.rendicion-form .file-button {
+  display: inline-flex;
 }
 
 .file-button input {
@@ -619,6 +668,11 @@ button {
   inset: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+.file-button:focus-within {
+  outline: 3px solid rgba(63, 127, 118, 0.28);
+  outline-offset: 2px;
 }
 
 .file-button.is-disabled {
@@ -767,7 +821,7 @@ button {
 
 .admin-rendiciones-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 900px;
   border-collapse: collapse;
 }
 
@@ -784,6 +838,11 @@ button {
   font-size: 0.76rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.range-filter {
+  display: grid;
+  gap: 8px;
 }
 
 .admin-rendiciones-table td {
@@ -819,6 +878,134 @@ button {
   min-height: 36px;
   padding-inline: 12px;
   white-space: nowrap;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 16px;
+  background: rgba(18, 52, 59, 0.34);
+}
+
+.filter-modal {
+  width: min(100%, 680px);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(18, 52, 59, 0.26);
+}
+
+.filter-modal form {
+  display: grid;
+  max-height: inherit;
+}
+
+.filter-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #e8efed;
+  padding: 20px;
+}
+
+.filter-modal-header h2 {
+  margin: 0;
+  color: #12343b;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.active-filter-note {
+  margin: 8px 0 0;
+  color: #51766d;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.modal-close-button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #eef5f3;
+  color: #12343b;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.modal-close-button:focus-visible,
+.filter-modal input:focus,
+.filter-modal select:focus {
+  outline: none;
+  border-color: #3f7f76;
+  box-shadow: 0 0 0 3px rgba(63, 127, 118, 0.14);
+}
+
+.filter-modal-body {
+  overflow: auto;
+  padding: 20px;
+}
+
+.filter-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.filter-form-grid label {
+  display: grid;
+  gap: 8px;
+  color: #213b40;
+  font-weight: 800;
+}
+
+.filter-form-grid input,
+.filter-form-grid select {
+  width: 100%;
+  border: 1px solid #cbd8d4;
+  border-radius: 8px;
+  padding: 12px 13px;
+  background: #fbfdfc;
+  color: #1f2933;
+  outline: none;
+}
+
+.filter-fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.filter-fieldset legend {
+  padding: 0 6px;
+  color: #213b40;
+  font-weight: 800;
+}
+
+.filter-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #e8efed;
+  padding: 16px 20px 20px;
+}
+
+.filter-modal-actions .button {
+  min-width: 120px;
 }
 
 .skeleton-grid {
@@ -861,72 +1048,34 @@ button {
     box-shadow: 0 8px 18px rgba(18, 52, 59, 0.06);
   }
 
-  .admin-table-wrap {
-    overflow: visible;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .admin-rendiciones-table {
-    min-width: 0;
-    border-collapse: separate;
-    border-spacing: 0 12px;
-  }
-
-  .admin-rendiciones-table,
-  .admin-rendiciones-table tbody,
-  .admin-rendiciones-table tr,
-  .admin-rendiciones-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .admin-rendiciones-table thead {
-    display: none;
-  }
-
-  .admin-rendiciones-table tr {
-    border: 1px solid #d9e2df;
-    border-radius: 8px;
-    background: #ffffff;
-  }
-
-  .admin-rendiciones-table td {
-    display: grid;
-    grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    border-bottom: 1px solid #eef5f3;
-    padding: 10px 12px;
-  }
-
-  .admin-rendiciones-table td::before {
-    content: attr(data-label);
-    color: #62736f;
-    font-size: 0.75rem;
-    font-weight: 900;
-    text-transform: uppercase;
-  }
-
-  .admin-rendiciones-table td:last-child {
-    border-bottom: 0;
-  }
-
-  .numeric-cell {
-    white-space: normal;
-  }
-
-  .table-actions .button {
-    width: 100%;
-  }
-
   .segmented-control {
     grid-template-columns: repeat(2, 48px);
   }
 
   .segmented-control button {
     min-height: 44px;
+  }
+
+  .filter-controls-field .button {
+    flex: 1 1 140px;
+  }
+
+  .filter-modal {
+    align-self: end;
+    max-height: calc(100vh - 16px);
+  }
+
+  .filter-modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .filter-modal-actions .button {
+    width: 100%;
+  }
+
+  .filter-modal-actions .button-primary {
+    order: -1;
   }
 
   .sticky-actions {
@@ -962,6 +1111,10 @@ button {
     min-width: 180px;
   }
 
+  .dashboard-header-actions {
+    width: 180px;
+  }
+
   .app-header h1 {
     font-size: 2.5rem;
   }
@@ -981,8 +1134,20 @@ button {
   }
 
   .filters-bar {
-    grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+    grid-template-columns: minmax(220px, 2fr) auto minmax(170px, auto);
     align-items: end;
+  }
+
+  .filter-controls-field {
+    justify-self: end;
+  }
+
+  .filter-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .range-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .skeleton-grid {
@@ -994,9 +1159,12 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .top-actions,
-  .attachment-actions {
+  .top-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .file-button {
+    width: auto;
   }
 
   .detail-actions {

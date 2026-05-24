@@ -1,5 +1,6 @@
 import type { Rendicion } from '../types/rendicion';
 import { formatDisplayDate } from '../utils/date';
+import { formatTipoRendicionNombre } from '../utils/format';
 import {
   getEstadoLabel,
   getSyncStatusLabel,
@@ -43,7 +44,12 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
       <dl className="card-meta">
         <div>
           <dt>Tipo</dt>
-          <dd>{rendicion.tipo_rendicion_nombre || 'Sin tipo'}</dd>
+          <dd>
+            {formatTipoRendicionNombre(
+              rendicion.tipo_rendicion_id,
+              rendicion.tipo_rendicion_nombre,
+            )}
+          </dd>
         </div>
         <div>
           <dt>Creada</dt>

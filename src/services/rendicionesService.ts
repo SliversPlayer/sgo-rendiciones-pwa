@@ -4,6 +4,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { firestoreDb } from './firebase/firebase';
 import type { Rendicion, RendicionFormData } from '../types/rendicion';
 import { nowIso } from '../utils/date';
+import { formatTipoRendicionNombre } from '../utils/format';
 import { createId } from '../utils/id';
 import { isRendicionEditable } from '../utils/rendicionStatus';
 
@@ -95,7 +96,7 @@ async function getTipoRendicionSnapshot(data: RendicionFormData) {
 
   return {
     tipo_rendicion_id: tipoRendicion.id,
-    tipo_rendicion_nombre: tipoRendicion.nombre,
+    tipo_rendicion_nombre: formatTipoRendicionNombre(tipoRendicion.id, tipoRendicion.nombre),
     tipo_rendicion_cuenta_contable: tipoRendicion.cuenta_contable,
   };
 }

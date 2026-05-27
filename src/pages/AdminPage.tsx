@@ -7,7 +7,7 @@ import { formatCurrency, formatTipoRendicionNombre } from '../utils/format';
 import { getRendicionOwnerLabel } from '../utils/rendicionOwner';
 import { getEstadoLabel } from '../utils/rendicionStatus';
 
-const estadosAdmin: AdminEstadoFilter[] = ['ENVIADA', 'APROBADA', 'RECHAZADA', 'TODAS'];
+const estadosAdmin: AdminEstadoFilter[] = ['TODAS', 'ENVIADA', 'APROBADA', 'RECHAZADA'];
 const adminViewModeKey = 'admin-rendiciones-view-mode';
 
 type AdminViewMode = 'cards' | 'list';
@@ -125,6 +125,18 @@ function getDateInputValue(value?: string): string {
   return date.toISOString().slice(0, 10);
 }
 
+function normalizeAdminEstadoFilter(value: string): AdminEstadoFilter | '' {
+  const normalizedValue = value.trim().toUpperCase();
+
+  if (normalizedValue === 'TODAS') {
+    return '';
+  }
+
+  return estadosAdmin.includes(normalizedValue as AdminEstadoFilter)
+    ? (normalizedValue as AdminEstadoFilter)
+    : '';
+}
+
 export function AdminPage() {
   const navigate = useNavigate();
   const { estado, setEstado, rendiciones, isLoading, error, reload } = useAdminRendiciones();
@@ -144,6 +156,8 @@ export function AdminPage() {
   const visibleRendiciones = useMemo(() => {
     const ownerFilter = normalizeFilterText(listFilters.owner.trim());
     const titleFilter = normalizeFilterText(listFilters.title.trim());
+    const statusFilter =
+      estado === 'TODAS' ? normalizeAdminEstadoFilter(listFilters.status) : '';
     const minAmount = listFilters.amountMin === '' ? null : Number(listFilters.amountMin);
     const maxAmount = listFilters.amountMax === '' ? null : Number(listFilters.amountMax);
 
@@ -165,7 +179,7 @@ export function AdminPage() {
         return false;
       }
 
-      if (listFilters.status && rendicion.estado !== listFilters.status) {
+      if (statusFilter && rendicion.estado !== statusFilter) {
         return false;
       }
 
@@ -187,7 +201,7 @@ export function AdminPage() {
 
       return true;
     });
-  }, [listFilters, rendiciones]);
+  }, [estado, listFilters, rendiciones]);
 
   const activeFilterCount = getActiveListFilterCount(listFilters);
   const draftActiveFilterCount = getActiveListFilterCount(draftListFilters);
@@ -209,6 +223,12 @@ export function AdminPage() {
       ...currentFilters,
       [key]: value,
     }));
+  };
+
+  const handleEstadoChange = (nextEstado: AdminEstadoFilter) => {
+    setEstado(nextEstado);
+    setListFilters((currentFilters) => ({ ...currentFilters, status: '' }));
+    setDraftListFilters((currentFilters) => ({ ...currentFilters, status: '' }));
   };
 
   const applyListFilters = () => {
@@ -251,7 +271,7 @@ export function AdminPage() {
             <span>Estado</span>
             <select
               value={estado}
-              onChange={(event) => setEstado(event.target.value as AdminEstadoFilter)}
+              onChange={(event) => handleEstadoChange(event.target.value as AdminEstadoFilter)}
             >
               {estadosAdmin.map((item) => (
                 <option key={item} value={item}>

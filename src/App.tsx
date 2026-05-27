@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
 import { useCatalogosBootstrap } from './hooks/useCatalogos';
 import { useAuth } from './hooks/useAuth';
+import { useAutoSync } from './hooks/useAutoSync';
 import { AdminPage } from './pages/AdminPage';
 import { AdminRendicionDetallePage } from './pages/AdminRendicionDetallePage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -19,6 +20,7 @@ function LoadingShell({ message }: { message: string }) {
 
 function ProtectedLayout() {
   const { currentUser, loading } = useAuth();
+  useAutoSync();
 
   if (loading) {
     return <LoadingShell message="Cargando sesion..." />;

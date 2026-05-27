@@ -540,6 +540,32 @@ button {
   outline: none;
 }
 
+.rendicion-form input:disabled,
+.rendicion-form select:disabled,
+.rendicion-form textarea:disabled {
+  border-color: #d9e2df;
+  background: #eef5f3;
+  color: #62736f;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.rendicion-form input:disabled::placeholder,
+.rendicion-form textarea:disabled::placeholder {
+  color: #7a8b87;
+}
+
+.rendicion-form input[type='number'].amount-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.rendicion-form input[type='number'].amount-input::-webkit-outer-spin-button,
+.rendicion-form input[type='number'].amount-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 .rendicion-form select.is-filled {
   border-color: #3f7f76;
   background: #f3faf8;

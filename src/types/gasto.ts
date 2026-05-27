@@ -1,6 +1,9 @@
 export interface Gasto {
   id: string;
   rendicion_id: string;
+  uid?: string;
+  usuario_id?: string;
+  usuario_email?: string;
   fecha: string;
   glosa: string;
   centro_negocio_id: string;
@@ -15,6 +18,8 @@ export interface Gasto {
   tipo_gasto_nombre: string;
   tipo_gasto_cuenta_contable: string;
   monto: number;
+  fecha_creacion?: string;
+  fecha_actualizacion?: string;
   centro_costo_id?: string;
   centro_costo_nombre?: string;
   centro_costo_codigo?: string;
@@ -27,6 +32,10 @@ export interface Adjunto {
   archivo: Blob;
   nombre: string;
   tipo: string;
+  size?: number;
+  storagePath?: string;
+  downloadURL?: string;
+  uploadedAt?: string;
 }
 
 export interface GastoFormData {
@@ -40,9 +49,14 @@ export interface GastoFormData {
 }
 
 export interface AdjuntoInput {
+  id?: string;
   archivo: Blob;
   nombre: string;
   tipo: string;
+  size?: number;
+  storagePath?: string;
+  downloadURL?: string;
+  uploadedAt?: string;
 }
 
 export interface GastoConAdjuntos {

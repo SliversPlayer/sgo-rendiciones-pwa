@@ -2,8 +2,10 @@ import centrosNegocioCsv from '../../docs/catalogos/centros_negocio.csv?raw';
 import tiposDocumentoCsv from '../../docs/catalogos/tipos_documento.csv?raw';
 import tiposGastoCsv from '../../docs/catalogos/tipos_gasto.csv?raw';
 import tiposRendicionCsv from '../../docs/catalogos/tipos_rendicion.csv?raw';
+import type { Table } from 'dexie';
 import type {
   CentroNegocio,
+  CatalogoBase,
   GastoCatalogos,
   TipoDocumento,
   TipoGasto,
@@ -18,8 +20,29 @@ import {
 } from './db';
 
 type CsvRow = Record<string, string>;
+type CatalogoSource = 'CSV seed -> Dexie';
+type CatalogoTable<T extends CatalogoBase> = Table<T, string>;
 
 let seedPromise: Promise<void> | null = null;
+const CATALOG_SOURCE: CatalogoSource = 'CSV seed -> Dexie';
+
+function logCatalogosDiagnostic(
+  message: string,
+  details: Record<string, unknown>,
+): void {
+  if (import.meta.env.DEV) {
+    console.info(`[SGO Catalogos] ${message}`, details);
+  }
+}
+
+function warnCatalogosDiagnostic(
+  message: string,
+  details: Record<string, unknown>,
+): void {
+  if (import.meta.env.DEV) {
+    console.warn(`[SGO Catalogos] ${message}`, details);
+  }
+}
 
 function parseCsvLine(line: string): string[] {
   const values: string[] = [];
@@ -71,7 +94,19 @@ function parseCsv(content: string): CsvRow[] {
 }
 
 function parseActivo(value: string): boolean {
-  return value.trim().toUpperCase() === 'TRUE';
+  return ['TRUE', '1', 'SI', 'S', 'ACTIVO'].includes(value.trim().toUpperCase());
+}
+
+function isActivo(value: unknown): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return parseActivo(value);
+  }
+
+  return false;
 }
 
 function parseCentrosNegocio(): CentroNegocio[] {
@@ -111,10 +146,58 @@ function parseTiposGasto(): TipoGasto[] {
   }));
 }
 
-async function seedTiposRendicionIfEmpty(): Promise<void> {
-  if ((await tiposRendicionTable.count()) === 0) {
-    await tiposRendicionTable.bulkPut(parseTiposRendicion());
+function getActiveCount<T extends CatalogoBase>(items: T[]): number {
+  return items.filter((item) => isActivo(item.activo)).length;
+}
+
+async function ensureCatalogoSeed<T extends CatalogoBase>(
+  table: CatalogoTable<T>,
+  parsedItems: T[],
+  catalogName: string,
+): Promise<void> {
+  const storedItems = await table.toArray();
+  const totalLocal = storedItems.length;
+  const activeLocal = getActiveCount(storedItems);
+  const activeSeed = getActiveCount(parsedItems);
+  const storedIds = new Set(storedItems.map((item) => item.id));
+  const missingSeedItems = parsedItems.filter((item) => !storedIds.has(item.id));
+  const shouldRepairActiveCatalog = activeLocal === 0 && activeSeed > 0;
+
+  if (totalLocal === 0 || shouldRepairActiveCatalog) {
+    await table.bulkPut(parsedItems);
+    logCatalogosDiagnostic('catalogo hidratado desde seed', {
+      catalogo: catalogName,
+      source: CATALOG_SOURCE,
+      totalLocal,
+      activeLocal,
+      insertedOrRepaired: parsedItems.length,
+      reason: totalLocal === 0 ? 'tabla local vacia' : 'sin registros activos locales',
+    });
+    return;
   }
+
+  if (missingSeedItems.length > 0) {
+    await table.bulkPut(missingSeedItems);
+    logCatalogosDiagnostic('catalogo completado desde seed', {
+      catalogo: catalogName,
+      source: CATALOG_SOURCE,
+      totalLocal,
+      activeLocal,
+      missingSeedItems: missingSeedItems.length,
+    });
+    return;
+  }
+
+  logCatalogosDiagnostic('catalogo local disponible', {
+    catalogo: catalogName,
+    source: 'Dexie',
+    totalLocal,
+    activeLocal,
+  });
+}
+
+async function seedTiposRendicionIfEmpty(): Promise<void> {
+  await ensureCatalogoSeed(tiposRendicionTable, parseTiposRendicion(), 'tipos_rendicion');
 }
 
 async function seedCatalogos(): Promise<void> {
@@ -130,30 +213,18 @@ async function seedCatalogos(): Promise<void> {
     tiposRendicionTable,
     tiposGastoTable,
     async () => {
-      if ((await centrosNegocioTable.count()) === 0) {
-        await centrosNegocioTable.bulkPut(centrosNegocio);
-      }
-
-      if ((await tiposDocumentoTable.count()) === 0) {
-        await tiposDocumentoTable.bulkPut(tiposDocumento);
-      }
-
-      if ((await tiposRendicionTable.count()) === 0) {
-        await tiposRendicionTable.bulkPut(tiposRendicion);
-      }
-
-      if ((await tiposGastoTable.count()) === 0) {
-        await tiposGastoTable.bulkPut(tiposGasto);
-      }
+      await ensureCatalogoSeed(centrosNegocioTable, centrosNegocio, 'centros_negocio');
+      await ensureCatalogoSeed(tiposDocumentoTable, tiposDocumento, 'tipos_documento');
+      await ensureCatalogoSeed(tiposRendicionTable, tiposRendicion, 'tipos_rendicion');
+      await ensureCatalogoSeed(tiposGastoTable, tiposGasto, 'tipos_gasto');
     },
   );
 }
 
 export function seedCatalogosIfNeeded(): Promise<void> {
   if (!seedPromise) {
-    seedPromise = seedCatalogos().catch((error) => {
+    seedPromise = seedCatalogos().finally(() => {
       seedPromise = null;
-      throw error;
     });
   }
 
@@ -165,8 +236,30 @@ async function getActiveCatalogo<T extends { activo: boolean; nombre: string }>(
 ): Promise<T[]> {
   const items = await loader();
   return items
-    .filter((item) => item.activo)
+    .filter((item) => isActivo(item.activo))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+}
+
+function logLoadedGastoCatalogos(catalogos: GastoCatalogos): void {
+  const emptyCatalogos = [
+    catalogos.centrosNegocio.length === 0 ? 'centros_negocio' : null,
+    catalogos.tiposDocumento.length === 0 ? 'tipos_documento' : null,
+    catalogos.tiposGasto.length === 0 ? 'tipos_gasto' : null,
+  ].filter(Boolean);
+  const details = {
+    source: CATALOG_SOURCE,
+    centrosNegocio: catalogos.centrosNegocio.length,
+    tiposDocumento: catalogos.tiposDocumento.length,
+    tiposGasto: catalogos.tiposGasto.length,
+    emptyCatalogos,
+  };
+
+  if (emptyCatalogos.length > 0) {
+    warnCatalogosDiagnostic('catalogos vacios despues de intentar cargar seed', details);
+    return;
+  }
+
+  logCatalogosDiagnostic('catalogos cargados para Crear Gasto', details);
 }
 
 export async function getCentrosNegocio(): Promise<CentroNegocio[]> {
@@ -197,11 +290,14 @@ export async function getGastoCatalogos(): Promise<GastoCatalogos> {
     getTiposGasto(),
   ]);
 
-  return {
+  const catalogos = {
     centrosNegocio,
     tiposDocumento,
     tiposGasto,
   };
+
+  logLoadedGastoCatalogos(catalogos);
+  return catalogos;
 }
 
 export async function getCentroNegocioById(id: string): Promise<CentroNegocio | undefined> {

@@ -16,7 +16,7 @@ function getAdminErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'No se pudo cargar la informacion administrativa.';
 }
 
-export function useAdminRendiciones(initialEstado: AdminEstadoFilter = 'ENVIADA') {
+export function useAdminRendiciones(initialEstado: AdminEstadoFilter = 'TODAS') {
   const [estado, setEstado] = useState<AdminEstadoFilter>(initialEstado);
   const [rendiciones, setRendiciones] = useState<AdminRendicion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +28,7 @@ export function useAdminRendiciones(initialEstado: AdminEstadoFilter = 'ENVIADA'
       setError(null);
       setRendiciones(await getAdminRendiciones(estado));
     } catch (loadError) {
+      setRendiciones([]);
       setError(getAdminErrorMessage(loadError));
     } finally {
       setIsLoading(false);

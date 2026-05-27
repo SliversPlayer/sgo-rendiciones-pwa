@@ -65,7 +65,10 @@ function getInitialAdjuntos(initialGasto?: GastoConAdjuntos): AdjuntoDraft[] {
       archivo: adjunto.archivo,
       nombre: adjunto.nombre,
       tipo: adjunto.tipo,
-      size: adjunto.archivo.size,
+      size: adjunto.size ?? adjunto.archivo.size,
+      storagePath: adjunto.storagePath,
+      downloadURL: adjunto.downloadURL,
+      uploadedAt: adjunto.uploadedAt,
     })) ?? []
   );
 }
@@ -189,6 +192,18 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       return catalogosError;
     }
 
+    if (catalogos.centrosNegocio.length === 0) {
+      return 'No hay centros de negocio disponibles. Contacte al administrador.';
+    }
+
+    if (catalogos.tiposDocumento.length === 0) {
+      return 'No hay tipos de documento disponibles. Contacte al administrador.';
+    }
+
+    if (catalogos.tiposGasto.length === 0) {
+      return 'No hay tipos de gasto disponibles. Contacte al administrador.';
+    }
+
     if (!data.centro_negocio_id) {
       return 'Selecciona un centro de negocio.';
     }
@@ -238,7 +253,18 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       setFormError(null);
       await onSubmit(
         data,
-        adjuntos.map(({ archivo, nombre, tipo }) => ({ archivo, nombre, tipo })),
+        adjuntos.map(
+          ({ id, archivo, nombre, tipo, size, storagePath, downloadURL, uploadedAt }) => ({
+            id,
+            archivo,
+            nombre,
+            tipo,
+            size,
+            storagePath,
+            downloadURL,
+            uploadedAt,
+          }),
+        ),
       );
     } catch (error) {
       setFormError(

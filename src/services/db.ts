@@ -81,6 +81,97 @@ class SgoRendicionesDatabase extends Dexie {
           }
         });
       });
+
+    this.version(5)
+      .stores({
+        rendiciones:
+          'id, usuario_id, uid, estado, sync_status, tipo_rendicion_id, fecha_creacion, fecha_actualizacion, fecha_envio',
+        gastos: 'id, rendicion_id, fecha, centro_negocio_id, tipo_documento_id, tipo_gasto_id',
+        adjuntos: 'id, gasto_id',
+        centros_negocio: 'id, codigo, activo, nombre',
+        tipos_documento: 'id, codigo, cuenta_contable, activo, nombre',
+        tipos_rendicion: 'id, cuenta_contable, activo, nombre',
+        tipos_gasto: 'id, cuenta_contable, activo, nombre',
+      })
+      .upgrade(async (transaction) => {
+        await transaction.table<Rendicion, string>('rendiciones').toCollection().modify((rendicion) => {
+          const usuarioId = rendicion.usuario_id?.trim();
+          const uid = rendicion.uid?.trim();
+
+          if (!rendicion.uid && usuarioId) {
+            rendicion.uid = usuarioId;
+          }
+
+          if (!rendicion.usuario_id && uid) {
+            rendicion.usuario_id = uid;
+          }
+        });
+      });
+
+    this.version(6)
+      .stores({
+        rendiciones:
+          'id, usuario_id, uid, estado, sync_status, tipo_rendicion_id, fecha_creacion, fecha_actualizacion, fecha_envio, last_synced_at',
+        gastos:
+          'id, rendicion_id, usuario_id, uid, fecha, centro_negocio_id, tipo_documento_id, tipo_gasto_id',
+        adjuntos: 'id, gasto_id, storagePath',
+        centros_negocio: 'id, codigo, activo, nombre',
+        tipos_documento: 'id, codigo, cuenta_contable, activo, nombre',
+        tipos_rendicion: 'id, cuenta_contable, activo, nombre',
+        tipos_gasto: 'id, cuenta_contable, activo, nombre',
+      })
+      .upgrade(async (transaction) => {
+        await transaction.table<Rendicion, string>('rendiciones').toCollection().modify((rendicion) => {
+          const ownerId = rendicion.usuario_id?.trim() || rendicion.uid?.trim();
+
+          if (!rendicion.uid && ownerId) {
+            rendicion.uid = ownerId;
+          }
+
+          if (!rendicion.usuario_id && ownerId) {
+            rendicion.usuario_id = ownerId;
+          }
+
+          if (rendicion.sync_status === 'LOCAL') {
+            rendicion.sync_status = 'PENDING_CREATE';
+          }
+
+          if (rendicion.sync_status === 'PENDING') {
+            rendicion.sync_status = 'PENDING_UPDATE';
+          }
+
+          if (rendicion.sync_status === 'ERROR') {
+            rendicion.sync_status = 'SYNC_ERROR';
+          }
+
+          if (rendicion.sync_status === 'SYNCED' && !rendicion.last_synced_at) {
+            rendicion.last_synced_at = rendicion.fecha_actualizacion;
+          }
+        });
+
+        const rendiciones = await transaction.table<Rendicion, string>('rendiciones').toArray();
+        const rendicionesById = new Map(
+          rendiciones.map((rendicion) => [rendicion.id, rendicion]),
+        );
+
+        await transaction.table<Gasto, string>('gastos').toCollection().modify((gasto) => {
+          const rendicion = rendicionesById.get(gasto.rendicion_id);
+          const ownerId = rendicion?.usuario_id?.trim() || rendicion?.uid?.trim();
+
+          if (ownerId) {
+            gasto.usuario_id = gasto.usuario_id || ownerId;
+            gasto.uid = gasto.uid || ownerId;
+          }
+
+          if (!gasto.fecha_creacion) {
+            gasto.fecha_creacion = rendicion?.fecha_creacion ?? gasto.fecha;
+          }
+
+          if (!gasto.fecha_actualizacion) {
+            gasto.fecha_actualizacion = rendicion?.fecha_actualizacion ?? gasto.fecha;
+          }
+        });
+      });
   }
 }
 

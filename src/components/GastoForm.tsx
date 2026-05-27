@@ -7,6 +7,22 @@ interface GastoFormProps {
   onCancel: () => void;
 }
 
+function getCatalogPlaceholder(isLoading: boolean, hasOptions: boolean, labels: {
+  loading: string;
+  empty: string;
+  ready: string;
+}) {
+  if (isLoading) {
+    return labels.loading;
+  }
+
+  if (!hasOptions) {
+    return labels.empty;
+  }
+
+  return labels.ready;
+}
+
 export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) {
   const {
     data,
@@ -25,6 +41,31 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
     handleSubmit,
   } = useGastoForm({ initialGasto, onSubmit });
   const isEditing = Boolean(initialGasto);
+  const hasCentrosNegocio = catalogos.centrosNegocio.length > 0;
+  const hasTiposDocumento = catalogos.tiposDocumento.length > 0;
+  const hasTiposGasto = catalogos.tiposGasto.length > 0;
+  const isCentroNegocioDisabled = isCatalogosLoading || !hasCentrosNegocio;
+  const isTipoDocumentoDisabled = isCatalogosLoading || !hasTiposDocumento;
+  const isTipoGastoDisabled = isCatalogosLoading || !hasTiposGasto;
+  const hasUnavailableCatalogos =
+    !isCatalogosLoading &&
+    !catalogosError &&
+    (!hasCentrosNegocio || !hasTiposDocumento || !hasTiposGasto);
+  const centroNegocioPlaceholder = getCatalogPlaceholder(isCatalogosLoading, hasCentrosNegocio, {
+    loading: 'Cargando centros de negocio...',
+    empty: 'No hay centros de negocio disponibles',
+    ready: 'Selecciona centro de negocio',
+  });
+  const tipoDocumentoPlaceholder = getCatalogPlaceholder(isCatalogosLoading, hasTiposDocumento, {
+    loading: 'Cargando tipos de documento...',
+    empty: 'No hay tipos de documento disponibles',
+    ready: 'Selecciona tipo documento',
+  });
+  const tipoGastoPlaceholder = getCatalogPlaceholder(isCatalogosLoading, hasTiposGasto, {
+    loading: 'Cargando tipos de gasto...',
+    empty: 'No hay tipos de gasto disponibles',
+    ready: 'Selecciona tipo gasto',
+  });
 
   return (
     <section className="form-panel wide-panel" aria-labelledby="gasto-form-title">
@@ -59,12 +100,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <label>
             <span>Centro de negocio</span>
             <select
-              className={data.centro_negocio_id ? 'is-filled' : ''}
-              value={data.centro_negocio_id}
+              className={hasCentrosNegocio && data.centro_negocio_id ? 'is-filled' : ''}
+              value={hasCentrosNegocio ? data.centro_negocio_id : ''}
               onChange={(event) => updateField('centro_negocio_id', event.target.value)}
-              disabled={isCatalogosLoading}
+              disabled={isCentroNegocioDisabled}
             >
-              <option value="">Selecciona centro de negocio</option>
+              <option value="">{centroNegocioPlaceholder}</option>
               {catalogos.centrosNegocio.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -76,12 +117,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <label>
             <span>Tipo documento</span>
             <select
-              className={data.tipo_documento_id ? 'is-filled' : ''}
-              value={data.tipo_documento_id}
+              className={hasTiposDocumento && data.tipo_documento_id ? 'is-filled' : ''}
+              value={hasTiposDocumento ? data.tipo_documento_id : ''}
               onChange={(event) => updateField('tipo_documento_id', event.target.value)}
-              disabled={isCatalogosLoading}
+              disabled={isTipoDocumentoDisabled}
             >
-              <option value="">Selecciona tipo documento</option>
+              <option value="">{tipoDocumentoPlaceholder}</option>
               {catalogos.tiposDocumento.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -104,12 +145,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           <label>
             <span>Tipo gasto</span>
             <select
-              className={data.tipo_gasto_id ? 'is-filled' : ''}
-              value={data.tipo_gasto_id}
+              className={hasTiposGasto && data.tipo_gasto_id ? 'is-filled' : ''}
+              value={hasTiposGasto ? data.tipo_gasto_id : ''}
               onChange={(event) => updateField('tipo_gasto_id', event.target.value)}
-              disabled={isCatalogosLoading}
+              disabled={isTipoGastoDisabled}
             >
-              <option value="">Selecciona tipo gasto</option>
+              <option value="">{tipoGastoPlaceholder}</option>
               {catalogos.tiposGasto.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -122,9 +163,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
             <span>Monto</span>
             <input
               type="number"
+              className="amount-input"
               value={data.monto}
               onChange={(event) => updateField('monto', event.target.value)}
               placeholder="0"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min="1"
               step="1"
             />
@@ -133,6 +177,11 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
 
         {isCatalogosLoading ? <p className="notice">Cargando catalogos locales...</p> : null}
         {catalogosError ? <p className="notice notice-error">{catalogosError}</p> : null}
+        {hasUnavailableCatalogos ? (
+          <p className="notice notice-warning">
+            Faltan opciones para crear el gasto. Contacte al administrador.
+          </p>
+        ) : null}
 
         <fieldset className="adjuntos-fieldset">
           <legend>Adjuntos</legend>

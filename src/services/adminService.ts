@@ -19,7 +19,19 @@ import type { RendicionEstado } from '../types/rendicion';
 import { nowIso } from '../utils/date';
 import { firestoreDb } from './firebase/firebase';
 
-const ADMIN_ESTADOS: RendicionEstado[] = ['ENVIADA', 'APROBADA', 'RECHAZADA'];
+type AdminRendicionEstado = Extract<RendicionEstado, 'ENVIADA' | 'APROBADA' | 'RECHAZADA'>;
+const ADMIN_ESTADOS: AdminRendicionEstado[] = ['ENVIADA', 'APROBADA', 'RECHAZADA'];
+const ADMIN_ESTADO_VARIANT_BY_ESTADO: Record<AdminRendicionEstado, string[]> = {
+  ENVIADA: ['ENVIADA', 'enviada', 'Enviada'],
+  APROBADA: ['APROBADA', 'aprobada', 'Aprobada'],
+  RECHAZADA: ['RECHAZADA', 'rechazada', 'Rechazada'],
+};
+const ADMIN_ESTADO_VARIANTS: Record<AdminEstadoFilter, string[]> = {
+  TODAS: ADMIN_ESTADOS.flatMap((estado) => ADMIN_ESTADO_VARIANT_BY_ESTADO[estado]),
+  ENVIADA: ADMIN_ESTADO_VARIANT_BY_ESTADO.ENVIADA,
+  APROBADA: ADMIN_ESTADO_VARIANT_BY_ESTADO.APROBADA,
+  RECHAZADA: ADMIN_ESTADO_VARIANT_BY_ESTADO.RECHAZADA,
+};
 
 interface AdminActor {
   uid: string;
@@ -30,10 +42,21 @@ function getActorLabel(actor: AdminActor): string {
   return actor.email ? `${actor.email} (${actor.uid})` : actor.uid;
 }
 
+function isAdminEstado(value: unknown): value is AdminRendicionEstado {
+  return ADMIN_ESTADOS.includes(value as AdminRendicionEstado);
+}
+
+function normalizeAdminEstado(value?: string): AdminRendicionEstado {
+  const normalizedValue = value?.trim().toUpperCase();
+
+  return isAdminEstado(normalizedValue) ? normalizedValue : 'ENVIADA';
+}
+
 function normalizeRendicion(id: string, data: Partial<AdminRendicion>): AdminRendicion {
   return {
     id,
-    usuario_id: data.usuario_id ?? '',
+    uid: data.uid ?? data.usuario_id,
+    usuario_id: data.usuario_id ?? data.uid ?? '',
     usuario_nombre: data.usuario_nombre,
     usuario_email: data.usuario_email,
     titulo: data.titulo ?? 'Sin titulo',
@@ -41,7 +64,7 @@ function normalizeRendicion(id: string, data: Partial<AdminRendicion>): AdminRen
     tipo_rendicion_id: data.tipo_rendicion_id ?? '',
     tipo_rendicion_nombre: data.tipo_rendicion_nombre ?? '',
     tipo_rendicion_cuenta_contable: data.tipo_rendicion_cuenta_contable ?? '',
-    estado: data.estado ?? 'ENVIADA',
+    estado: normalizeAdminEstado(data.estado),
     sync_status: data.sync_status ?? 'SYNCED',
     fecha_creacion: data.fecha_creacion ?? '',
     fecha_actualizacion: data.fecha_actualizacion ?? '',
@@ -95,16 +118,25 @@ export async function getAdminRendiciones(
   estado: AdminEstadoFilter,
 ): Promise<AdminRendicion[]> {
   const baseCollection = collection(firestoreDb, 'rendiciones');
-  const rendicionesQuery =
-    estado === 'TODAS'
-      ? query(baseCollection, where('estado', 'in', ADMIN_ESTADOS))
-      : query(baseCollection, where('estado', '==', estado));
-  const snapshot = await getDocs(rendicionesQuery);
+  const estadoVariants = ADMIN_ESTADO_VARIANTS[estado];
+  const snapshots = await Promise.all(
+    estadoVariants.map((estadoValue) =>
+      getDocs(query(baseCollection, where('estado', '==', estadoValue))),
+    ),
+  );
+  const documentsById = snapshots.reduce((itemsById, snapshot) => {
+    snapshot.docs.forEach((documentSnapshot) => {
+      itemsById.set(documentSnapshot.id, documentSnapshot);
+    });
 
-  return snapshot.docs
+    return itemsById;
+  }, new Map<string, (typeof snapshots)[number]['docs'][number]>());
+
+  return Array.from(documentsById.values())
     .map((documentSnapshot) =>
       normalizeRendicion(documentSnapshot.id, documentSnapshot.data() as Partial<AdminRendicion>),
     )
+    .filter((rendicion) => isAdminEstado(rendicion.estado))
     .sort(
       (first, second) =>
         new Date(second.fecha_envio ?? second.fecha_actualizacion).getTime() -
@@ -122,13 +154,19 @@ export async function getAdminRendicionDetalle(
     throw new Error('Rendicion no encontrada en Firestore.');
   }
 
+  const rendicion = normalizeRendicion(
+    rendicionSnapshot.id,
+    rendicionSnapshot.data() as Partial<AdminRendicion>,
+  );
+
+  if (!isAdminEstado(rendicion.estado)) {
+    throw new Error('La rendicion no pertenece al flujo administrativo.');
+  }
+
   const gastosSnapshot = await getDocs(collection(rendicionRef, 'gastos'));
 
   return {
-    rendicion: normalizeRendicion(
-      rendicionSnapshot.id,
-      rendicionSnapshot.data() as Partial<AdminRendicion>,
-    ),
+    rendicion,
     gastos: gastosSnapshot.docs
       .map((documentSnapshot) =>
         normalizeGasto(documentSnapshot.id, documentSnapshot.data() as Partial<AdminGasto>),
@@ -165,7 +203,7 @@ export async function rechazarRendicionAdmin(
 
   await updateDoc(doc(firestoreDb, 'rendiciones', rendicionId), {
     estado: 'RECHAZADA',
-    sync_status: 'LOCAL',
+    sync_status: 'SYNCED',
     fecha_rechazo: nowIso(),
     usuario_rechazo: getActorLabel(actor),
     observacion_rechazo: trimmedObservacion,

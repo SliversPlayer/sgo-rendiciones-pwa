@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { deleteGasto, getGastosConAdjuntosByRendicion } from '../services/gastosService';
 import { getRendicionById } from '../services/rendicionesService';
+import { syncRendicionDraft } from '../services/syncService';
 import type { Gasto, GastoConAdjuntos } from '../types/gasto';
 import type { Rendicion } from '../types/rendicion';
 import { isRendicionEditable } from '../utils/rendicionStatus';
+import { useAuth } from './useAuth';
 
 function isGastoValidoParaEnvio({ gasto, adjuntos }: GastoConAdjuntos): boolean {
   const centroNegocioId = gasto.centro_negocio_id ?? gasto.centro_costo_id;
@@ -44,19 +46,38 @@ function isRendicionValidaParaEnvio(
 }
 
 export function useRendicionDetalle(rendicionId: string) {
+  const { currentUser, userProfile } = useAuth();
   const [rendicion, setRendicion] = useState<Rendicion | null>(null);
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isRendicionValida, setIsRendicionValida] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const usuarioId = currentUser?.uid ?? null;
 
   const loadDetalle = useCallback(async () => {
+    if (!usuarioId) {
+      setRendicion(null);
+      setGastos([]);
+      setIsRendicionValida(false);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setError(null);
-      const [storedRendicion, storedGastosConAdjuntos] = await Promise.all([
-        getRendicionById(rendicionId),
-        getGastosConAdjuntosByRendicion(rendicionId),
-      ]);
+      const storedRendicion = await getRendicionById(rendicionId, usuarioId);
+
+      if (!storedRendicion) {
+        setRendicion(null);
+        setGastos([]);
+        setIsRendicionValida(false);
+        return;
+      }
+
+      const storedGastosConAdjuntos = await getGastosConAdjuntosByRendicion(
+        rendicionId,
+        usuarioId,
+      );
       const nextRendicion = storedRendicion ?? null;
 
       setRendicion(nextRendicion);
@@ -69,17 +90,31 @@ export function useRendicionDetalle(rendicionId: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [rendicionId]);
+  }, [rendicionId, usuarioId]);
 
   useEffect(() => {
+    setRendicion(null);
+    setGastos([]);
+    setIsRendicionValida(false);
+    setError(null);
     setIsLoading(true);
     void loadDetalle();
   }, [loadDetalle]);
 
   const removeGasto = async (gasto: Gasto) => {
+    if (!usuarioId) {
+      setError('Debes iniciar sesion para eliminar gastos.');
+      return;
+    }
+
     try {
       setError(null);
-      await deleteGasto(gasto);
+      await deleteGasto(gasto, usuarioId);
+      await syncRendicionDraft(
+        gasto.rendicion_id,
+        currentUser,
+        userProfile?.nombre ?? currentUser?.displayName,
+      );
       setGastos((current) => current.filter((item) => item.id !== gasto.id));
       await loadDetalle();
     } catch (error) {

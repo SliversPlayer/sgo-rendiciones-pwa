@@ -146,6 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     setAuthError(null);
     await signOut(firebaseAuth);
+    setCurrentUser(null);
+    setUserProfile(null);
   }, []);
 
   const value = useMemo(

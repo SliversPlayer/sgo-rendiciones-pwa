@@ -30,6 +30,10 @@ export function getSyncStatusLabel(status: RendicionSyncStatus): string {
     PENDING: 'Pendiente',
     SYNCED: 'Sincronizada',
     ERROR: 'Error',
+    PENDING_CREATE: 'Pendiente de crear',
+    PENDING_UPDATE: 'Pendiente de actualizar',
+    PENDING_DELETE: 'Pendiente de eliminar',
+    SYNC_ERROR: 'Error de sync',
   };
 
   return labels[status];

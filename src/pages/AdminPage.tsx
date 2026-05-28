@@ -354,42 +354,46 @@ export function AdminPage() {
         {!isLoading && rendiciones.length > 0 && viewMode === 'cards' && visibleRendiciones.length > 0 ? (
           <div className="rendiciones-grid">
             {visibleRendiciones.map((rendicion) => (
-              <article className="rendicion-card" key={rendicion.id}>
-                <div className="card-header">
-                  <div>
-                    <p className="card-kicker">Dueno: {getRendicionOwnerLabel(rendicion)}</p>
-                    <h2>{rendicion.titulo}</h2>
+              <article className="rendicion-card admin-rendicion-card" key={rendicion.id}>
+                <div className="admin-card-content">
+                  <div className="card-header admin-card-header">
+                    <div className="admin-card-title">
+                      <p className="card-kicker">Dueno: {getRendicionOwnerLabel(rendicion)}</p>
+                      <h2>{rendicion.titulo}</h2>
+                    </div>
+                    <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
+                      {getEstadoLabel(rendicion.estado)}
+                    </span>
                   </div>
-                  <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
-                    {getEstadoLabel(rendicion.estado)}
-                  </span>
+
+                  <dl className="card-meta">
+                    <div>
+                      <dt>Tipo</dt>
+                      <dd>
+                        {formatTipoRendicionNombre(
+                          rendicion.tipo_rendicion_id,
+                          rendicion.tipo_rendicion_nombre,
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Enviada</dt>
+                      <dd>
+                        {rendicion.fecha_envio ? formatDisplayDate(rendicion.fecha_envio) : 'Sin fecha'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Total</dt>
+                      <dd>{formatCurrency(rendicion.monto_total ?? 0)}</dd>
+                    </div>
+                  </dl>
+
+                  {rendicion.observacion_rechazo ? (
+                    <p className="notice notice-warning admin-card-note">
+                      {rendicion.observacion_rechazo}
+                    </p>
+                  ) : null}
                 </div>
-
-                <dl className="card-meta">
-                  <div>
-                    <dt>Tipo</dt>
-                    <dd>
-                      {formatTipoRendicionNombre(
-                        rendicion.tipo_rendicion_id,
-                        rendicion.tipo_rendicion_nombre,
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Enviada</dt>
-                    <dd>
-                      {rendicion.fecha_envio ? formatDisplayDate(rendicion.fecha_envio) : 'Sin fecha'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Total</dt>
-                    <dd>{formatCurrency(rendicion.monto_total ?? 0)}</dd>
-                  </div>
-                </dl>
-
-                {rendicion.observacion_rechazo ? (
-                  <p className="notice notice-warning">{rendicion.observacion_rechazo}</p>
-                ) : null}
 
                 <div className="card-actions">
                   <button

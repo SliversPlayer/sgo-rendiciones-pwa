@@ -1,4 +1,4 @@
-export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+export type UserRole = 'USER' | 'ADMIN' | 'SUPERADMIN';
 
 export interface DemoUser {
   usuario_id: string;
@@ -13,5 +13,8 @@ export interface UserProfile {
   nombre: string;
   rol: UserRole;
   activo: boolean;
-  created_at: string;
+  mustChangePassword?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string;
 }

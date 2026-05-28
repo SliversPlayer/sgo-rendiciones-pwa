@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
+import { PasswordChangeGate } from './components/PasswordChangeGate';
 import { useCatalogosBootstrap } from './hooks/useCatalogos';
 import { useAuth } from './hooks/useAuth';
 import { useAutoSync } from './hooks/useAutoSync';
@@ -8,7 +9,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { GastoFormPage } from './pages/GastoFormPage';
 import { LoginPage } from './pages/LoginPage';
 import { RendicionDetallePage } from './pages/RendicionDetallePage';
-import { isAdminUser } from './utils/roles';
+import { SuperAdminPage } from './pages/SuperAdminPage';
+import { isAdminUser, isSuperAdminUser } from './utils/roles';
 
 function LoadingShell({ message }: { message: string }) {
   return (
@@ -19,7 +21,7 @@ function LoadingShell({ message }: { message: string }) {
 }
 
 function ProtectedLayout() {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading, userProfile } = useAuth();
   useAutoSync();
 
   if (loading) {
@@ -28,6 +30,10 @@ function ProtectedLayout() {
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (userProfile?.mustChangePassword) {
+    return <PasswordChangeGate />;
   }
 
   return <Outlet />;
@@ -55,6 +61,20 @@ function AdminRoute() {
   }
 
   if (!isAdminUser(userProfile)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+}
+
+function SuperAdminRoute() {
+  const { userProfile, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingShell message="Cargando sesion..." />;
+  }
+
+  if (!isSuperAdminUser(userProfile)) {
     return <Navigate to="/" replace />;
   }
 
@@ -105,6 +125,9 @@ export function App() {
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/rendiciones/:id" element={<AdminRendicionDetallePage />} />
+        </Route>
+        <Route element={<SuperAdminRoute />}>
+          <Route path="/superadmin" element={<SuperAdminPage />} />
         </Route>
         <Route path="/rendicion/:id" element={<LegacyRendicionRedirect />} />
         <Route path="/rendicion/:id/nuevo" element={<LegacyNuevoGastoRedirect />} />

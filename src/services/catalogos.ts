@@ -3,6 +3,7 @@ import tiposDocumentoCsv from '../../docs/catalogos/tipos_documento.csv?raw';
 import tiposGastoCsv from '../../docs/catalogos/tipos_gasto.csv?raw';
 import tiposRendicionCsv from '../../docs/catalogos/tipos_rendicion.csv?raw';
 import type { Table } from 'dexie';
+import { collection, getDocs } from 'firebase/firestore';
 import type {
   CentroNegocio,
   CatalogoBase,
@@ -18,13 +19,20 @@ import {
   tiposGastoTable,
   tiposRendicionTable,
 } from './db';
+import { firebaseAuth, firestoreDb } from './firebase/firebase';
 
 type CsvRow = Record<string, string>;
 type CatalogoSource = 'CSV seed -> Dexie';
 type CatalogoTable<T extends CatalogoBase> = Table<T, string>;
+type RemoteCatalogoData = Partial<CatalogoBase> & {
+  cuenta_contable?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 let seedPromise: Promise<void> | null = null;
 const CATALOG_SOURCE: CatalogoSource = 'CSV seed -> Dexie';
+const remoteCatalogosWithDocuments = new Set<string>();
 
 function logCatalogosDiagnostic(
   message: string,
@@ -109,6 +117,24 @@ function isActivo(value: unknown): boolean {
   return false;
 }
 
+function normalizeRemoteActivo(value: unknown): boolean {
+  return value === undefined ? true : isActivo(value);
+}
+
+function getRemoteString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function normalizeRemoteTimestamps(data: RemoteCatalogoData) {
+  const createdAt = getRemoteString(data.createdAt ?? data.created_at);
+  const updatedAt = getRemoteString(data.updatedAt ?? data.updated_at, createdAt);
+
+  return {
+    createdAt: createdAt || undefined,
+    updatedAt: updatedAt || undefined,
+  };
+}
+
 function parseCentrosNegocio(): CentroNegocio[] {
   return parseCsv(centrosNegocioCsv).map((row) => ({
     id: row.id,
@@ -132,6 +158,7 @@ function parseTiposRendicion(): TipoRendicion[] {
   return parseCsv(tiposRendicionCsv).map((row) => ({
     id: row.id,
     nombre: row.nombre,
+    codigo: row.id,
     cuenta_contable: row.cuenta_contable,
     activo: parseActivo(row.activo),
   }));
@@ -141,9 +168,85 @@ function parseTiposGasto(): TipoGasto[] {
   return parseCsv(tiposGastoCsv).map((row) => ({
     id: row.id,
     nombre: row.nombre,
+    codigo: row.id,
     cuenta_contable: row.cuenta_contable,
     activo: parseActivo(row.activo),
   }));
+}
+
+function normalizeRemoteCentroNegocio(id: string, data: RemoteCatalogoData): CentroNegocio {
+  return {
+    id,
+    nombre: getRemoteString(data.nombre, 'Sin nombre'),
+    codigo: getRemoteString(data.codigo, id),
+    activo: normalizeRemoteActivo(data.activo),
+    ...normalizeRemoteTimestamps(data),
+  };
+}
+
+function normalizeRemoteTipoDocumento(id: string, data: RemoteCatalogoData): TipoDocumento {
+  return {
+    id,
+    nombre: getRemoteString(data.nombre, 'Sin nombre'),
+    codigo: getRemoteString(data.codigo, id),
+    cuenta_contable: getRemoteString(data.cuenta_contable, getRemoteString(data.codigo, id)),
+    activo: normalizeRemoteActivo(data.activo),
+    ...normalizeRemoteTimestamps(data),
+  };
+}
+
+function normalizeRemoteTipoRendicion(id: string, data: RemoteCatalogoData): TipoRendicion {
+  return {
+    id,
+    nombre: getRemoteString(data.nombre, 'Sin nombre'),
+    codigo: getRemoteString(data.codigo, id),
+    cuenta_contable: getRemoteString(data.cuenta_contable, getRemoteString(data.codigo, id)),
+    activo: normalizeRemoteActivo(data.activo),
+    ...normalizeRemoteTimestamps(data),
+  };
+}
+
+function normalizeRemoteTipoGasto(id: string, data: RemoteCatalogoData): TipoGasto {
+  return {
+    id,
+    nombre: getRemoteString(data.nombre, 'Sin nombre'),
+    codigo: getRemoteString(data.codigo, id),
+    cuenta_contable: getRemoteString(data.cuenta_contable, getRemoteString(data.codigo, id)),
+    activo: normalizeRemoteActivo(data.activo),
+    ...normalizeRemoteTimestamps(data),
+  };
+}
+
+async function refreshRemoteTable<T extends CatalogoBase>(
+  collectionName: string,
+  table: CatalogoTable<T>,
+  normalizer: (id: string, data: RemoteCatalogoData) => T,
+): Promise<void> {
+  const snapshot = await getDocs(collection(firestoreDb, collectionName));
+
+  if (snapshot.empty) {
+    return;
+  }
+
+  remoteCatalogosWithDocuments.add(collectionName);
+  await table.bulkPut(
+    snapshot.docs.map((documentSnapshot) =>
+      normalizer(documentSnapshot.id, documentSnapshot.data() as RemoteCatalogoData),
+    ),
+  );
+}
+
+export async function refreshCatalogosFromRemote(): Promise<void> {
+  if (!navigator.onLine || !firebaseAuth.currentUser) {
+    return;
+  }
+
+  await Promise.all([
+    refreshRemoteTable('centros_negocio', centrosNegocioTable, normalizeRemoteCentroNegocio),
+    refreshRemoteTable('tipos_documento', tiposDocumentoTable, normalizeRemoteTipoDocumento),
+    refreshRemoteTable('tipos_rendicion', tiposRendicionTable, normalizeRemoteTipoRendicion),
+    refreshRemoteTable('tipos_gasto', tiposGastoTable, normalizeRemoteTipoGasto),
+  ]);
 }
 
 function getActiveCount<T extends CatalogoBase>(items: T[]): number {
@@ -161,7 +264,12 @@ async function ensureCatalogoSeed<T extends CatalogoBase>(
   const activeSeed = getActiveCount(parsedItems);
   const storedIds = new Set(storedItems.map((item) => item.id));
   const missingSeedItems = parsedItems.filter((item) => !storedIds.has(item.id));
-  const shouldRepairActiveCatalog = activeLocal === 0 && activeSeed > 0;
+  const hasManagedItems = storedItems.some((item) => item.createdAt || item.updatedAt);
+  const shouldRepairActiveCatalog =
+    activeLocal === 0 &&
+    activeSeed > 0 &&
+    !hasManagedItems &&
+    !remoteCatalogosWithDocuments.has(catalogName);
 
   if (totalLocal === 0 || shouldRepairActiveCatalog) {
     await table.bulkPut(parsedItems);
@@ -201,6 +309,12 @@ async function seedTiposRendicionIfEmpty(): Promise<void> {
 }
 
 async function seedCatalogos(): Promise<void> {
+  await refreshCatalogosFromRemote().catch((error) => {
+    warnCatalogosDiagnostic('no se pudo refrescar catalogos desde Firestore', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+
   const centrosNegocio = parseCentrosNegocio();
   const tiposDocumento = parseTiposDocumento();
   const tiposRendicion = parseTiposRendicion();

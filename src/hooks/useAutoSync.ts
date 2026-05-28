@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { refreshCatalogosFromRemote } from '../services/catalogos';
 import { refreshUserRendicionesFromRemote } from '../services/rendicionesService';
 import { syncPendingUserData } from '../services/syncService';
 import { useAuth } from './useAuth';
@@ -8,7 +9,7 @@ export function useAutoSync() {
   const usuarioNombre = userProfile?.nombre ?? currentUser?.displayName ?? null;
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || userProfile?.mustChangePassword || userProfile?.activo === false) {
       return undefined;
     }
 
@@ -19,6 +20,7 @@ export function useAutoSync() {
         return;
       }
 
+      await refreshCatalogosFromRemote().catch(() => undefined);
       await syncPendingUserData(currentUser, usuarioNombre).catch(() => undefined);
 
       if (isActive) {
@@ -33,5 +35,5 @@ export function useAutoSync() {
       isActive = false;
       window.removeEventListener('online', syncNow);
     };
-  }, [currentUser, usuarioNombre]);
+  }, [currentUser, userProfile?.activo, userProfile?.mustChangePassword, usuarioNombre]);
 }

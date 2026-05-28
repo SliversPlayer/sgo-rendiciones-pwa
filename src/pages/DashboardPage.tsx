@@ -9,7 +9,7 @@ import { useRendiciones } from '../hooks/useRendiciones';
 import type { Rendicion, RendicionEstado, RendicionFormData } from '../types/rendicion';
 import { formatCurrency } from '../utils/format';
 import { getEstadoLabel, isRendicionEditable } from '../utils/rendicionStatus';
-import { isAdminUser } from '../utils/roles';
+import { isAdminUser, isSuperAdminUser } from '../utils/roles';
 
 type ViewMode = 'list' | 'create' | 'edit';
 type EstadoFilter = 'TODAS' | RendicionEstado;
@@ -124,6 +124,15 @@ export function DashboardPage() {
               onClick={() => navigate('/admin')}
             >
               Panel admin
+            </button>
+          ) : null}
+          {isSuperAdminUser(userProfile) ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => navigate('/superadmin')}
+            >
+              Panel superadmin
             </button>
           ) : null}
           <button type="button" className="button button-secondary" onClick={() => void logout()}>

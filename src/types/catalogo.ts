@@ -2,6 +2,9 @@ export interface CatalogoBase {
   id: string;
   nombre: string;
   activo: boolean;
+  codigo?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CentroNegocio extends CatalogoBase {
@@ -15,10 +18,12 @@ export interface TipoDocumento extends CatalogoBase {
 
 export interface TipoRendicion extends CatalogoBase {
   cuenta_contable: string;
+  codigo?: string;
 }
 
 export interface TipoGasto extends CatalogoBase {
   cuenta_contable: string;
+  codigo?: string;
 }
 
 export interface GastoCatalogos {

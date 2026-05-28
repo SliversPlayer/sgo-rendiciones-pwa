@@ -263,6 +263,49 @@ button {
   min-height: 44px;
 }
 
+.superadmin-tabs,
+.catalog-tabs {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.superadmin-tabs button,
+.catalog-tabs button {
+  min-height: 44px;
+  border: 1px solid #cbd8d4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #12343b;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.superadmin-tabs button.is-active,
+.catalog-tabs button.is-active {
+  border-color: #12343b;
+  background: #12343b;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(18, 52, 59, 0.14);
+}
+
+.superadmin-form-panel {
+  margin-bottom: 20px;
+}
+
+.superadmin-stats {
+  grid-template-columns: 1fr;
+}
+
+.superadmin-filters {
+  margin-top: 8px;
+}
+
+.compact-heading {
+  margin-top: 4px;
+}
+
 .section-heading {
   margin-bottom: 18px;
 }
@@ -402,6 +445,16 @@ button {
 .status-rechazada {
   background: #f8d7da;
   color: #8a1c25;
+}
+
+.status-active {
+  background: #e6f4ea;
+  color: #17623a;
+}
+
+.status-inactive {
+  background: #eef1f3;
+  color: #52616b;
 }
 
 .card-glosa {
@@ -580,6 +633,22 @@ button {
 
 .rendicion-form textarea {
   resize: vertical;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 10px;
+  color: #213b40;
+  font-weight: 800;
+}
+
+.rendicion-form .checkbox-row input {
+  width: auto;
+  accent-color: #12343b;
 }
 
 .form-error {
@@ -972,6 +1041,10 @@ button {
   border-collapse: collapse;
 }
 
+.superadmin-table {
+  min-width: 760px;
+}
+
 .admin-rendiciones-table th,
 .admin-rendiciones-table td {
   padding: 13px 14px;
@@ -1025,6 +1098,17 @@ button {
   min-height: 36px;
   padding-inline: 12px;
   white-space: nowrap;
+}
+
+.table-select {
+  width: 100%;
+  min-width: 150px;
+  border: 1px solid #cbd8d4;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: #1f2933;
+  font-weight: 800;
 }
 
 .modal-backdrop {
@@ -1280,9 +1364,25 @@ button {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .superadmin-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .superadmin-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .filters-bar {
     grid-template-columns: minmax(220px, 2fr) auto minmax(170px, auto);
     align-items: end;
+  }
+
+  .superadmin-filters {
+    grid-template-columns: minmax(220px, 2fr) minmax(160px, auto) minmax(160px, auto);
   }
 
   .filter-controls-field {

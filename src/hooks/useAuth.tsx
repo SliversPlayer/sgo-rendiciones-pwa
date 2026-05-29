@@ -5,7 +5,7 @@ import {
   updatePassword,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import {
   createContext,
   useCallback,
@@ -112,7 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    const clearProfileSubscription = () => {
+      unsubscribeProfile?.();
+      unsubscribeProfile = null;
+    };
+
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      clearProfileSubscription();
       setLoading(true);
 
       if (!user) {
@@ -125,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthError(null);
 
       try {
+        const userRef = doc(firestoreDb, 'usuarios', user.uid);
         const profile = await getOrCreateUserProfile(user);
 
         if (profile.activo === false) {
@@ -137,6 +146,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setCurrentUser(user);
         setUserProfile(profile);
+        unsubscribeProfile = onSnapshot(
+          userRef,
+          (snapshot) => {
+            if (!snapshot.exists()) {
+              setAuthError('No se pudo cargar tu perfil de usuario.');
+              setCurrentUser(null);
+              setUserProfile(null);
+              clearProfileSubscription();
+              void signOut(firebaseAuth);
+              return;
+            }
+
+            const nextProfile = normalizeUserProfile(
+              user,
+              snapshot.data() as Partial<UserProfile>,
+            );
+
+            if (nextProfile.activo === false) {
+              setAuthError('Su cuenta esta desactivada. Contacte al administrador.');
+              setCurrentUser(null);
+              setUserProfile(null);
+              clearProfileSubscription();
+              void signOut(firebaseAuth);
+              return;
+            }
+
+            setAuthError(null);
+            setCurrentUser(user);
+            setUserProfile(nextProfile);
+          },
+          () => {
+            if (!navigator.onLine) {
+              return;
+            }
+
+            setAuthError('No se pudo cargar tu perfil de usuario.');
+          },
+        );
       } catch (error) {
         if (!navigator.onLine) {
           setCurrentUser(user);
@@ -154,7 +201,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      clearProfileSubscription();
+      unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

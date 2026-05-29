@@ -20,6 +20,15 @@ import { nowIso } from '../utils/date';
 import { firestoreDb } from './firebase/firebase';
 
 type AdminRendicionEstado = Extract<RendicionEstado, 'ENVIADA' | 'APROBADA' | 'RECHAZADA'>;
+const RENDICION_ESTADOS: RendicionEstado[] = [
+  'BORRADOR',
+  'PENDIENTE_ENVIO',
+  'ENVIANDO',
+  'ENVIADA',
+  'APROBADA',
+  'RECHAZADA',
+  'ERROR',
+];
 const ADMIN_ESTADOS: AdminRendicionEstado[] = ['ENVIADA', 'APROBADA', 'RECHAZADA'];
 const ADMIN_ESTADO_VARIANT_BY_ESTADO: Record<AdminRendicionEstado, string[]> = {
   ENVIADA: ['ENVIADA', 'enviada', 'Enviada'],
@@ -46,10 +55,14 @@ function isAdminEstado(value: unknown): value is AdminRendicionEstado {
   return ADMIN_ESTADOS.includes(value as AdminRendicionEstado);
 }
 
-function normalizeAdminEstado(value?: string): AdminRendicionEstado {
+function isRendicionEstado(value: unknown): value is RendicionEstado {
+  return RENDICION_ESTADOS.includes(value as RendicionEstado);
+}
+
+function normalizeAdminEstado(value?: string): RendicionEstado {
   const normalizedValue = value?.trim().toUpperCase();
 
-  return isAdminEstado(normalizedValue) ? normalizedValue : 'ENVIADA';
+  return isRendicionEstado(normalizedValue) ? normalizedValue : 'ERROR';
 }
 
 function normalizeRendicion(id: string, data: Partial<AdminRendicion>): AdminRendicion {

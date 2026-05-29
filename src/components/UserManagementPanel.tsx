@@ -1,6 +1,10 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useSuperAdminUsers } from '../hooks/useSuperAdminUsers';
-import type { CreateManagedUserInput, ManagedUser } from '../types/superadmin';
+import type {
+  CreateManagedUserInput,
+  ManagedUser,
+  UpdateManagedUserInput,
+} from '../types/superadmin';
 import type { UserRole } from '../types/user';
 import { getSelectableUserRoles, normalizeUserRole } from '../utils/roles';
 import { formatRut } from '../utils/rut';
@@ -16,14 +20,33 @@ function normalizeSearch(value: string): string {
     .toLowerCase();
 }
 
-function matchesUserSearch(user: ManagedUser, search: string): boolean {
-  if (!search) {
+function compactRutSearch(value: string): string {
+  return normalizeSearch(value).replace(/[.\-\s]/g, '');
+}
+
+function buildEditFormData(user: ManagedUser): UpdateManagedUserInput {
+  return {
+    nombre: user.nombre,
+    rut: formatRut(user.rut) || user.rut || '',
+    rol: normalizeUserRole(user.rol),
+    activo: user.activo,
+  };
+}
+
+function matchesUserSearch(user: ManagedUser, rawSearch: string): boolean {
+  if (!rawSearch) {
     return true;
   }
 
-  return normalizeSearch(
-    `${user.nombre} ${user.email} ${user.rut ?? ''} ${normalizeUserRole(user.rol)}`,
-  ).includes(search);
+  const formattedRut = formatRut(user.rut);
+  const textSearch = normalizeSearch(rawSearch);
+  const textHaystack = normalizeSearch(
+    `${user.nombre} ${user.email} ${user.rut ?? ''} ${formattedRut} ${normalizeUserRole(user.rol)}`,
+  );
+  const rutSearch = compactRutSearch(rawSearch);
+  const rutHaystack = compactRutSearch(`${user.rut ?? ''} ${formattedRut}`);
+
+  return textHaystack.includes(textSearch) || (!!rutSearch && rutHaystack.includes(rutSearch));
 }
 
 export function UserManagementPanel() {
@@ -36,9 +59,8 @@ export function UserManagementPanel() {
     successMessage,
     reload,
     createUser,
-    changeUserRole,
     changeUserActive,
-    changeUserRut,
+    saveUser,
   } = useSuperAdminUsers();
   const [formData, setFormData] = useState<CreateManagedUserInput>({
     nombre: '',
@@ -52,12 +74,12 @@ export function UserManagementPanel() {
   const [roleFilter, setRoleFilter] = useState<UserRole | 'TODOS'>('TODOS');
   const [stateFilter, setStateFilter] = useState<UserStateFilter>('TODOS');
   const [formError, setFormError] = useState<string | null>(null);
-  const [editingRutUserId, setEditingRutUserId] = useState<string | null>(null);
-  const [rutDraft, setRutDraft] = useState('');
-  const [rutEditError, setRutEditError] = useState<string | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<UpdateManagedUserInput | null>(null);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
 
   const visibleUsers = useMemo(() => {
-    const search = normalizeSearch(searchTerm.trim());
+    const search = searchTerm.trim();
 
     return users
       .filter((user) => roleFilter === 'TODOS' || normalizeUserRole(user.rol) === roleFilter)
@@ -75,11 +97,23 @@ export function UserManagementPanel() {
       .filter((user) => matchesUserSearch(user, search));
   }, [roleFilter, searchTerm, stateFilter, users]);
 
+  const editingUser = useMemo(
+    () => users.find((user) => user.uid === editingUserId) ?? null,
+    [editingUserId, users],
+  );
+
   function updateFormField<K extends keyof CreateManagedUserInput>(
     field: K,
     value: CreateManagedUserInput[K],
   ) {
     setFormData((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateEditFormField<K extends keyof UpdateManagedUserInput>(
+    field: K,
+    value: UpdateManagedUserInput[K],
+  ) {
+    setEditFormData((current) => (current ? { ...current, [field]: value } : current));
   }
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
@@ -103,24 +137,6 @@ export function UserManagementPanel() {
     }
   }
 
-  async function handleRoleChange(user: ManagedUser, nextRole: UserRole) {
-    const normalizedNextRole = normalizeUserRole(nextRole);
-
-    if (normalizeUserRole(user.rol) === normalizedNextRole) {
-      return;
-    }
-
-    const shouldChange = window.confirm(
-      `Cambiar rol de ${user.nombre} a ${normalizedNextRole}?`,
-    );
-
-    if (!shouldChange) {
-      return;
-    }
-
-    await changeUserRole(user.uid, normalizedNextRole).catch(() => undefined);
-  }
-
   async function handleActiveChange(user: ManagedUser) {
     const nextActive = !user.activo;
 
@@ -135,28 +151,32 @@ export function UserManagementPanel() {
     await changeUserActive(user.uid, nextActive).catch(() => undefined);
   }
 
-  function startRutEdit(user: ManagedUser) {
-    setEditingRutUserId(user.uid);
-    setRutDraft(user.rut ?? '');
-    setRutEditError(null);
+  function startUserEdit(user: ManagedUser) {
+    setEditingUserId(user.uid);
+    setEditFormData(buildEditFormData(user));
+    setEditFormError(null);
   }
 
-  function cancelRutEdit() {
-    setEditingRutUserId(null);
-    setRutDraft('');
-    setRutEditError(null);
+  function cancelUserEdit() {
+    setEditingUserId(null);
+    setEditFormData(null);
+    setEditFormError(null);
   }
 
-  async function handleRutSubmit(event: FormEvent<HTMLFormElement>, user: ManagedUser) {
+  async function handleUpdateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!editingUserId || !editFormData) {
+      return;
+    }
+
     try {
-      setRutEditError(null);
-      await changeUserRut(user.uid, rutDraft);
-      cancelRutEdit();
+      setEditFormError(null);
+      await saveUser(editingUserId, editFormData);
+      cancelUserEdit();
     } catch (saveError) {
-      setRutEditError(
-        saveError instanceof Error ? saveError.message : 'No se pudo actualizar el RUT.',
+      setEditFormError(
+        saveError instanceof Error ? saveError.message : 'No se pudo actualizar el usuario.',
       );
     }
   }
@@ -275,6 +295,86 @@ export function UserManagementPanel() {
         </form>
       </section>
 
+      {editingUser && editFormData ? (
+        <section className="form-panel wide-panel superadmin-form-panel" aria-labelledby="edit-user-title">
+          <div className="section-heading">
+            <p className="eyebrow">Editar usuario</p>
+            <h2 id="edit-user-title">{editingUser.nombre}</h2>
+          </div>
+
+          <form className="rendicion-form" onSubmit={handleUpdateUser}>
+            <div className="form-grid">
+              <label>
+                <span>Nombre</span>
+                <input
+                  type="text"
+                  value={editFormData.nombre}
+                  onChange={(event) => updateEditFormField('nombre', event.target.value)}
+                  maxLength={120}
+                  placeholder="Nombre completo"
+                />
+              </label>
+
+              <label>
+                <span>Email</span>
+                <input type="email" value={editingUser.email} disabled />
+              </label>
+
+              <label>
+                <span>RUT</span>
+                <input
+                  type="text"
+                  value={editFormData.rut}
+                  onChange={(event) => updateEditFormField('rut', event.target.value)}
+                  placeholder="12.345.678-5"
+                  maxLength={12}
+                  required
+                />
+              </label>
+
+              <label>
+                <span>Rol</span>
+                <select
+                  value={editFormData.rol}
+                  onChange={(event) => updateEditFormField('rol', event.target.value as UserRole)}
+                >
+                  {roleOptions.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={editFormData.activo}
+                onChange={(event) => updateEditFormField('activo', event.target.checked)}
+              />
+              <span>Usuario activo</span>
+            </label>
+
+            {editFormError ? <p className="form-error">{editFormError}</p> : null}
+
+            <div className="form-actions">
+              <button type="submit" className="button button-primary" disabled={isSaving}>
+                {isSaving ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={cancelUserEdit}
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
       <div className="filters-bar superadmin-filters" aria-label="Filtros de usuarios">
         <label>
           <span>Buscar</span>
@@ -341,61 +441,8 @@ export function UserManagementPanel() {
                 <tr key={user.uid}>
                   <td data-label="Nombre">{user.nombre}</td>
                   <td data-label="Email">{user.email}</td>
-                  <td data-label="RUT">
-                    {editingRutUserId === user.uid ? (
-                      <form className="inline-edit-form" onSubmit={(event) => handleRutSubmit(event, user)}>
-                        <input
-                          type="text"
-                          value={rutDraft}
-                          onChange={(event) => setRutDraft(event.target.value)}
-                          placeholder="12.345.678-5"
-                          maxLength={12}
-                          aria-label={`RUT de ${user.nombre}`}
-                          autoFocus
-                        />
-                        <div className="table-actions">
-                          <button type="submit" className="button button-primary button-small" disabled={isSaving}>
-                            Guardar
-                          </button>
-                          <button
-                            type="button"
-                            className="button button-secondary button-small"
-                            onClick={cancelRutEdit}
-                            disabled={isSaving}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                        {rutEditError ? <p className="form-error">{rutEditError}</p> : null}
-                      </form>
-                    ) : (
-                      <div className="rut-cell">
-                        <span>{formatRut(user.rut) || '-'}</span>
-                        <button
-                          type="button"
-                          className="button button-secondary button-small"
-                          onClick={() => startRutEdit(user)}
-                          disabled={isSaving}
-                        >
-                          Editar RUT
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td data-label="Rol">
-                    <select
-                      className="table-select"
-                      value={normalizeUserRole(user.rol)}
-                      onChange={(event) => void handleRoleChange(user, event.target.value as UserRole)}
-                      disabled={isSaving}
-                    >
-                      {roleOptions.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                  <td data-label="RUT">{formatRut(user.rut) || '-'}</td>
+                  <td data-label="Rol">{normalizeUserRole(user.rol)}</td>
                   <td data-label="Estado">
                     <span className={`status-pill ${user.activo ? 'status-active' : 'status-inactive'}`}>
                       {user.activo ? 'Activo' : 'Inactivo'}
@@ -405,9 +452,17 @@ export function UserManagementPanel() {
                     <div className="table-actions">
                       <button
                         type="button"
+                        className="button button-secondary button-small"
+                        onClick={() => startUserEdit(user)}
+                        disabled={isSaving || editingUserId === user.uid}
+                      >
+                        {editingUserId === user.uid ? 'Editando' : 'Editar'}
+                      </button>
+                      <button
+                        type="button"
                         className={user.activo ? 'button button-danger button-small' : 'button button-secondary button-small'}
                         onClick={() => void handleActiveChange(user)}
-                        disabled={isSaving}
+                        disabled={isSaving || editingUserId === user.uid}
                       >
                         {user.activo ? 'Desactivar' : 'Activar'}
                       </button>

@@ -30,6 +30,7 @@ import type {
   ManagedCatalogInput,
   ManagedCatalogItem,
   ManagedUser,
+  UpdateManagedUserInput,
 } from '../types/superadmin';
 import type {
   CatalogoBase,
@@ -154,10 +155,18 @@ function validateManagedUserRut(rut: string): string {
   }
 
   if (!validateRut(rut)) {
-    throw new Error('Ingresa un RUT valido.');
+    throw new Error('El RUT ingresado no es valido.');
   }
 
   return normalizeRut(rut);
+}
+
+function validateUpdateManagedUserInput(input: UpdateManagedUserInput): string {
+  if (!input.nombre.trim()) {
+    throw new Error('Ingresa el nombre del usuario.');
+  }
+
+  return validateManagedUserRut(input.rut);
 }
 
 function assertRutIsAvailable(
@@ -273,8 +282,8 @@ export async function updateManagedUserActive(uid: string, activo: boolean): Pro
   });
 }
 
-export async function updateManagedUserRut(uid: string, rut: string): Promise<void> {
-  const normalizedRut = validateManagedUserRut(rut);
+export async function updateManagedUser(uid: string, input: UpdateManagedUserInput): Promise<void> {
+  const normalizedRut = validateUpdateManagedUserInput(input);
   const users = await getManagedUsers();
   const target = users.find((user) => user.uid === uid);
 
@@ -282,10 +291,18 @@ export async function updateManagedUserRut(uid: string, rut: string): Promise<vo
     throw new Error('Usuario no encontrado.');
   }
 
+  const normalizedRole = normalizeUserRole(input.rol);
+  assertKeepsActiveSuperAdmin(users, uid, {
+    rol: normalizedRole,
+    activo: input.activo,
+  });
   assertRutIsAvailable(users, normalizedRut, uid);
 
   await updateDoc(doc(firestoreDb, 'usuarios', uid), {
+    nombre: input.nombre.trim(),
     rut: normalizedRut,
+    rol: normalizedRole,
+    activo: input.activo,
     updatedAt: nowIso(),
   });
 }

@@ -312,3 +312,11 @@ src/
 - No implementar sync automatico ni envio masivo sin decision explicita.
 - Revisar `docs/dev-rules.md`, `docs/decisions.md`, `docs/decisions_sprint3.md` y `docs/sprints.md` antes de cambios grandes.
 
+## Instrucciones para IA
+
+Todo cambio visual debe respetar `design-system.md`.
+
+Antes de modificar UI:
+1. Leer design-system.md.
+2. Aplicar sus reglas.
+3. Reportar desviaciones encontradas.

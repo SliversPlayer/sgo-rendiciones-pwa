@@ -560,6 +560,28 @@ button {
   line-height: 1.1;
 }
 
+.auth-link-button {
+  width: fit-content;
+  justify-self: center;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  color: #51766d;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.auth-link-button:hover {
+  color: #12343b;
+}
+
+.auth-link-button:focus-visible {
+  outline: 3px solid rgba(63, 127, 118, 0.28);
+  outline-offset: 2px;
+}
+
 .form-panel {
   max-width: 680px;
   padding: 20px;
@@ -1100,31 +1122,6 @@ button {
   white-space: nowrap;
 }
 
-.rut-cell,
-.inline-edit-form {
-  display: grid;
-  gap: 8px;
-}
-
-.rut-cell {
-  align-items: center;
-}
-
-.inline-edit-form input {
-  min-width: 150px;
-}
-
-.table-select {
-  width: 100%;
-  min-width: 150px;
-  border: 1px solid #cbd8d4;
-  border-radius: 8px;
-  padding: 9px 10px;
-  background: #ffffff;
-  color: #1f2933;
-  font-weight: 800;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1143,6 +1140,10 @@ button {
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 24px 60px rgba(18, 52, 59, 0.26);
+}
+
+.password-reset-modal {
+  width: min(100%, 460px);
 }
 
 .filter-modal form {

@@ -1,4 +1,4 @@
-const RUT_BODY_PATTERN = /^\d{7,8}$/;
+const RUT_BODY_PATTERN = /^[1-9]\d{0,7}$/;
 const RUT_DV_PATTERN = /^[0-9K]$/;
 
 function splitRut(value: string): { body: string; dv: string } | null {

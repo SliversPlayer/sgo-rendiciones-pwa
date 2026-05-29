@@ -28,6 +28,13 @@ export interface CreateManagedUserInput {
   activo: boolean;
 }
 
+export interface UpdateManagedUserInput {
+  nombre: string;
+  rut: string;
+  rol: UserRole;
+  activo: boolean;
+}
+
 export interface ManagedCatalogItem {
   id: string;
   nombre: string;

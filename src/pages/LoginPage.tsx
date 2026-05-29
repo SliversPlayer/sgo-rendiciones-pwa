@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { PasswordResetModal } from '../components/PasswordResetModal';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
@@ -7,6 +8,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,8 +69,26 @@ export function LoginPage() {
           <button type="submit" className="button button-primary" disabled={isSubmitting}>
             {isSubmitting ? 'Ingresando...' : 'Ingresar'}
           </button>
+
+          <button
+            type="button"
+            className="auth-link-button"
+            onClick={() => {
+              setFormError(null);
+              setIsPasswordResetOpen(true);
+            }}
+          >
+            Olvido su contrasena?
+          </button>
         </form>
       </section>
+
+      {isPasswordResetOpen ? (
+        <PasswordResetModal
+          initialEmail={email}
+          onClose={() => setIsPasswordResetOpen(false)}
+        />
+      ) : null}
     </main>
   );
 }

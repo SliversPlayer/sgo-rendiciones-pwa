@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createManagedUser,
   getManagedUsers,
+  updateManagedUser,
   updateManagedUserActive,
-  updateManagedUserRut,
   updateManagedUserRole,
 } from '../services/superAdminService';
-import type { CreateManagedUserInput, ManagedUser } from '../types/superadmin';
+import type {
+  CreateManagedUserInput,
+  ManagedUser,
+  UpdateManagedUserInput,
+} from '../types/superadmin';
 import type { UserRole } from '../types/user';
 import { isSuperAdminRole } from '../utils/roles';
 
@@ -90,13 +94,13 @@ export function useSuperAdminUsers() {
     }
   };
 
-  const changeUserRut = async (uid: string, rut: string) => {
+  const saveUser = async (uid: string, input: UpdateManagedUserInput) => {
     try {
       setIsSaving(true);
       setError(null);
       setSuccessMessage(null);
-      await updateManagedUserRut(uid, rut);
-      setSuccessMessage('RUT actualizado correctamente.');
+      await updateManagedUser(uid, input);
+      setSuccessMessage('Usuario actualizado correctamente.');
       await reload();
     } catch (saveError) {
       setError(getErrorMessage(saveError));
@@ -115,8 +119,8 @@ export function useSuperAdminUsers() {
     successMessage,
     reload,
     createUser,
+    saveUser,
     changeUserRole,
     changeUserActive,
-    changeUserRut,
   };
 }

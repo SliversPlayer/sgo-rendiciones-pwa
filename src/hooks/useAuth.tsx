@@ -1,5 +1,6 @@
 import {
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updatePassword,
@@ -27,6 +28,7 @@ interface AuthContextValue {
   authError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   changeTemporaryPassword: (newPassword: string) => Promise<void>;
 }
 
@@ -95,7 +97,7 @@ function getAuthMessage(error: unknown): string {
   }
 
   if (code === 'auth/user-not-found') {
-    return 'No existe un usuario con ese email.';
+    return 'Email o password incorrectos.';
   }
 
   if (code === 'auth/too-many-requests') {
@@ -107,6 +109,36 @@ function getAuthMessage(error: unknown): string {
   }
 
   return 'No se pudo iniciar sesion. Intenta nuevamente.';
+}
+
+function getPasswordResetErrorMessage(error: unknown): string | null {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+
+  if (import.meta.env.DEV) {
+    console.error('[SGO Rendiciones] Password reset error', error);
+  }
+
+  if (code === 'auth/user-not-found' || code === 'auth/user-disabled') {
+    return null;
+  }
+
+  if (code === 'auth/invalid-email') {
+    return 'Correo electronico invalido.';
+  }
+
+  if (code === 'auth/missing-email') {
+    return 'Debe ingresar un correo electronico.';
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return 'Demasiados intentos. Espera unos minutos e intenta nuevamente.';
+  }
+
+  if (code === 'auth/network-request-failed') {
+    return 'No se pudo conectar con Firebase. Revisa tu conexion.';
+  }
+
+  return 'No se pudo enviar el enlace de recuperacion. Intenta nuevamente.';
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -234,6 +266,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(null);
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    try {
+      setAuthError(null);
+      await sendPasswordResetEmail(firebaseAuth, email.trim().toLowerCase());
+    } catch (error) {
+      const message = getPasswordResetErrorMessage(error);
+
+      if (!message) {
+        return;
+      }
+
+      throw new Error(message);
+    }
+  }, []);
+
   const changeTemporaryPassword = useCallback(
     async (newPassword: string) => {
       if (!currentUser) {
@@ -290,9 +337,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authError,
       login,
       logout,
+      requestPasswordReset,
       changeTemporaryPassword,
     }),
-    [authError, changeTemporaryPassword, currentUser, loading, login, logout, userProfile],
+    [
+      authError,
+      changeTemporaryPassword,
+      currentUser,
+      loading,
+      login,
+      logout,
+      requestPasswordReset,
+      userProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

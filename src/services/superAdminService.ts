@@ -78,6 +78,10 @@ function getRequiredString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+function isFirestoreTrue(value: unknown): boolean {
+  return value === true || (typeof value === 'string' && value.trim().toLowerCase() === 'true');
+}
+
 function normalizeManagedUser(uid: string, data: Partial<ManagedUser>): ManagedUser {
   const email = getRequiredString(data.email);
   const createdAt = getOptionalString(data.createdAt);
@@ -88,7 +92,8 @@ function normalizeManagedUser(uid: string, data: Partial<ManagedUser>): ManagedU
     email,
     rol: normalizeUserRole(data.rol),
     activo: data.activo !== false,
-    mustChangePassword: data.mustChangePassword === true,
+    mustChangePassword: isFirestoreTrue(data.mustChangePassword),
+    passwordChangedAt: getOptionalString(data.passwordChangedAt),
     createdAt,
     updatedAt: getOptionalString(data.updatedAt) ?? createdAt,
   };

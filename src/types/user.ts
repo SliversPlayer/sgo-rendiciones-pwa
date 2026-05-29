@@ -14,6 +14,7 @@ export interface UserProfile {
   rol: UserRole;
   activo: boolean;
   mustChangePassword?: boolean;
+  passwordChangedAt?: string;
   createdAt?: string;
   updatedAt?: string;
   created_at?: string;

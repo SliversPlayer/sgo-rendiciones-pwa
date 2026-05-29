@@ -5,7 +5,7 @@ import {
   updatePassword,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import {
   createContext,
   useCallback,
@@ -36,6 +36,10 @@ function getDefaultName(email: string): string {
   return email.split('@')[0] || email;
 }
 
+function isFirestoreTrue(value: unknown): boolean {
+  return value === true || (typeof value === 'string' && value.trim().toLowerCase() === 'true');
+}
+
 function buildLocalProfile(user: User): UserProfile {
   const email = user.email ?? '';
   const timestamp = nowIso();
@@ -63,24 +67,23 @@ function normalizeUserProfile(user: User, data: Partial<UserProfile>): UserProfi
     nombre: data.nombre?.trim() || fallback.nombre,
     rol: normalizeUserRole(data.rol),
     activo: data.activo !== false,
-    mustChangePassword: data.mustChangePassword === true,
+    mustChangePassword: isFirestoreTrue(data.mustChangePassword),
+    passwordChangedAt: data.passwordChangedAt,
     createdAt,
     updatedAt: data.updatedAt ?? createdAt,
     created_at: data.created_at ?? createdAt,
   };
 }
 
-async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
+async function getUserProfile(user: User): Promise<UserProfile> {
   const userRef = doc(firestoreDb, 'usuarios', user.uid);
   const snapshot = await getDoc(userRef);
 
-  if (snapshot.exists()) {
-    return normalizeUserProfile(user, snapshot.data() as Partial<UserProfile>);
+  if (!snapshot.exists()) {
+    throw new Error('No existe perfil de usuario asociado. Contacte al administrador.');
   }
 
-  const profile = buildLocalProfile(user);
-  await setDoc(userRef, profile);
-  return profile;
+  return normalizeUserProfile(user, snapshot.data() as Partial<UserProfile>);
 }
 
 function getAuthMessage(error: unknown): string {
@@ -134,10 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const userRef = doc(firestoreDb, 'usuarios', user.uid);
-        const profile = await getOrCreateUserProfile(user);
+        const profile = await getUserProfile(user);
 
         if (profile.activo === false) {
-          setAuthError('Su cuenta está desactivada. Contacte al administrador.');
+          setAuthError('Su cuenta esta desactivada. Contacte al administrador.');
           setCurrentUser(null);
           setUserProfile(null);
           await signOut(firebaseAuth);
@@ -150,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userRef,
           (snapshot) => {
             if (!snapshot.exists()) {
-              setAuthError('No se pudo cargar tu perfil de usuario.');
+              setAuthError('No existe perfil de usuario asociado. Contacte al administrador.');
               setCurrentUser(null);
               setUserProfile(null);
               clearProfileSubscription();
@@ -182,19 +185,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             setAuthError('No se pudo cargar tu perfil de usuario.');
+            setCurrentUser(null);
+            setUserProfile(null);
+            clearProfileSubscription();
+            void signOut(firebaseAuth);
           },
         );
       } catch (error) {
         if (!navigator.onLine) {
-          setCurrentUser(user);
-          setUserProfile(buildLocalProfile(user));
-          setAuthError(null);
+          setCurrentUser(null);
+          setUserProfile(null);
+          setAuthError('No se pudo cargar tu perfil de usuario.');
+          await signOut(firebaseAuth);
           return;
         }
 
         setCurrentUser(null);
         setUserProfile(null);
-        setAuthError('No se pudo cargar tu perfil de usuario.');
+        setAuthError(error instanceof Error ? error.message : 'No se pudo cargar tu perfil de usuario.');
         await signOut(firebaseAuth);
       } finally {
         setLoading(false);
@@ -242,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const timestamp = nowIso();
         await updateDoc(doc(firestoreDb, 'usuarios', currentUser.uid), {
           mustChangePassword: false,
+          passwordChangedAt: timestamp,
           updatedAt: timestamp,
         });
 
@@ -250,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ? {
                 ...currentProfile,
                 mustChangePassword: false,
+                passwordChangedAt: timestamp,
                 updatedAt: timestamp,
               }
             : currentProfile,

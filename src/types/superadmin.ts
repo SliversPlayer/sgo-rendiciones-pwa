@@ -13,6 +13,7 @@ export interface ManagedUser {
   rol: UserRole;
   activo: boolean;
   mustChangePassword: boolean;
+  passwordChangedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }

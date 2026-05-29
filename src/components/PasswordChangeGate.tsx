@@ -43,7 +43,7 @@ export function PasswordChangeGate() {
           <p className="eyebrow">Primer ingreso</p>
           <h1 id="password-change-title">Cambiar password</h1>
           <p className="header-copy">
-            {userProfile?.nombre ?? 'Usuario'}, debes definir un nuevo password para continuar.
+            {userProfile?.nombre ?? 'Usuario'}, debe cambiar su contrasena temporal antes de continuar.
           </p>
         </div>
 

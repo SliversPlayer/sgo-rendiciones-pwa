@@ -64,6 +64,7 @@ function normalizeUserProfile(user: User, data: Partial<UserProfile>): UserProfi
   return {
     uid: data.uid ?? user.uid,
     email: data.email ?? user.email ?? fallback.email,
+    rut: data.rut,
     nombre: data.nombre?.trim() || fallback.nombre,
     rol: normalizeUserRole(data.rol),
     activo: data.activo !== false,

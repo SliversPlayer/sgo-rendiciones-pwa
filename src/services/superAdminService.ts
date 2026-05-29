@@ -42,6 +42,7 @@ import type { UserRole } from '../types/user';
 import { nowIso } from '../utils/date';
 import { createId } from '../utils/id';
 import { normalizeUserRole, isSuperAdminRole } from '../utils/roles';
+import { normalizeRut, validateRut } from '../utils/rut';
 
 type CatalogoTableItem = CentroNegocio | TipoDocumento | TipoGasto | TipoRendicion;
 type CatalogoTable = Table<CatalogoTableItem, string>;
@@ -90,6 +91,7 @@ function normalizeManagedUser(uid: string, data: Partial<ManagedUser>): ManagedU
     uid: data.uid ?? uid,
     nombre: getRequiredString(data.nombre, email.split('@')[0] || 'Usuario'),
     email,
+    rut: getOptionalString(data.rut),
     rol: normalizeUserRole(data.rol),
     activo: data.activo !== false,
     mustChangePassword: isFirestoreTrue(data.mustChangePassword),
@@ -137,10 +139,38 @@ function validateCreateManagedUserInput(input: CreateManagedUserInput): void {
     throw new Error('Ingresa el email del usuario.');
   }
 
+  validateManagedUserRut(input.rut);
+
   if (input.temporaryPassword.length < MIN_TEMPORARY_PASSWORD_LENGTH) {
     throw new Error(
       `La contrasena temporal debe tener al menos ${MIN_TEMPORARY_PASSWORD_LENGTH} caracteres.`,
     );
+  }
+}
+
+function validateManagedUserRut(rut: string): string {
+  if (!rut.trim()) {
+    throw new Error('Ingresa el RUT del usuario.');
+  }
+
+  if (!validateRut(rut)) {
+    throw new Error('Ingresa un RUT valido.');
+  }
+
+  return normalizeRut(rut);
+}
+
+function assertRutIsAvailable(
+  users: ManagedUser[],
+  normalizedRut: string,
+  currentUid?: string,
+): void {
+  const duplicatedRut = users.some(
+    (user) => user.uid !== currentUid && user.rut && normalizeRut(user.rut) === normalizedRut,
+  );
+
+  if (duplicatedRut) {
+    throw new Error('Ya existe un usuario registrado con este RUT.');
   }
 }
 
@@ -156,6 +186,9 @@ export async function getManagedUsers(): Promise<ManagedUser[]> {
 
 export async function createManagedUser(input: CreateManagedUserInput): Promise<void> {
   validateCreateManagedUserInput(input);
+
+  const normalizedRut = normalizeRut(input.rut);
+  assertRutIsAvailable(await getManagedUsers(), normalizedRut);
 
   const secondaryApp = initializeApp(firebaseConfig, `sgo-user-create-${createId()}`);
   const secondaryAuth = getAuth(secondaryApp);
@@ -181,6 +214,7 @@ export async function createManagedUser(input: CreateManagedUserInput): Promise<
         uid: credential.user.uid,
         nombre,
         email,
+        rut: normalizedRut,
         rol: normalizedRole,
         activo: input.activo,
         mustChangePassword: true,
@@ -235,6 +269,23 @@ export async function updateManagedUserActive(uid: string, activo: boolean): Pro
 
   await updateDoc(doc(firestoreDb, 'usuarios', uid), {
     activo,
+    updatedAt: nowIso(),
+  });
+}
+
+export async function updateManagedUserRut(uid: string, rut: string): Promise<void> {
+  const normalizedRut = validateManagedUserRut(rut);
+  const users = await getManagedUsers();
+  const target = users.find((user) => user.uid === uid);
+
+  if (!target) {
+    throw new Error('Usuario no encontrado.');
+  }
+
+  assertRutIsAvailable(users, normalizedRut, uid);
+
+  await updateDoc(doc(firestoreDb, 'usuarios', uid), {
+    rut: normalizedRut,
     updatedAt: nowIso(),
   });
 }

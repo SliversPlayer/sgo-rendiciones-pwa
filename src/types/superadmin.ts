@@ -10,6 +10,7 @@ export interface ManagedUser {
   uid: string;
   nombre: string;
   email: string;
+  rut?: string;
   rol: UserRole;
   activo: boolean;
   mustChangePassword: boolean;
@@ -21,6 +22,7 @@ export interface ManagedUser {
 export interface CreateManagedUserInput {
   nombre: string;
   email: string;
+  rut: string;
   temporaryPassword: string;
   rol: UserRole;
   activo: boolean;

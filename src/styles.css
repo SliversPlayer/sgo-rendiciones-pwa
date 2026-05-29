@@ -1042,7 +1042,7 @@ button {
 }
 
 .superadmin-table {
-  min-width: 760px;
+  min-width: 900px;
 }
 
 .admin-rendiciones-table th,
@@ -1098,6 +1098,20 @@ button {
   min-height: 36px;
   padding-inline: 12px;
   white-space: nowrap;
+}
+
+.rut-cell,
+.inline-edit-form {
+  display: grid;
+  gap: 8px;
+}
+
+.rut-cell {
+  align-items: center;
+}
+
+.inline-edit-form input {
+  min-width: 150px;
 }
 
 .table-select {

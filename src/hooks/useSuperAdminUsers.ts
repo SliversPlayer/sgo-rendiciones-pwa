@@ -3,6 +3,7 @@ import {
   createManagedUser,
   getManagedUsers,
   updateManagedUserActive,
+  updateManagedUserRut,
   updateManagedUserRole,
 } from '../services/superAdminService';
 import type { CreateManagedUserInput, ManagedUser } from '../types/superadmin';
@@ -89,6 +90,22 @@ export function useSuperAdminUsers() {
     }
   };
 
+  const changeUserRut = async (uid: string, rut: string) => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      setSuccessMessage(null);
+      await updateManagedUserRut(uid, rut);
+      setSuccessMessage('RUT actualizado correctamente.');
+      await reload();
+    } catch (saveError) {
+      setError(getErrorMessage(saveError));
+      throw saveError;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return {
     users,
     activeSuperAdminCount,
@@ -100,5 +117,6 @@ export function useSuperAdminUsers() {
     createUser,
     changeUserRole,
     changeUserActive,
+    changeUserRut,
   };
 }

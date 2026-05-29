@@ -10,6 +10,7 @@ export interface DemoUser {
 export interface UserProfile {
   uid: string;
   email: string;
+  rut?: string;
   nombre: string;
   rol: UserRole;
   activo: boolean;

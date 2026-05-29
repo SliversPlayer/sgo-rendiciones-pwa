@@ -3,6 +3,7 @@ import { useSuperAdminUsers } from '../hooks/useSuperAdminUsers';
 import type { CreateManagedUserInput, ManagedUser } from '../types/superadmin';
 import type { UserRole } from '../types/user';
 import { getSelectableUserRoles, normalizeUserRole } from '../utils/roles';
+import { formatRut } from '../utils/rut';
 
 type UserStateFilter = 'TODOS' | 'ACTIVO' | 'INACTIVO';
 
@@ -20,9 +21,9 @@ function matchesUserSearch(user: ManagedUser, search: string): boolean {
     return true;
   }
 
-  return normalizeSearch(`${user.nombre} ${user.email} ${normalizeUserRole(user.rol)}`).includes(
-    search,
-  );
+  return normalizeSearch(
+    `${user.nombre} ${user.email} ${user.rut ?? ''} ${normalizeUserRole(user.rol)}`,
+  ).includes(search);
 }
 
 export function UserManagementPanel() {
@@ -37,10 +38,12 @@ export function UserManagementPanel() {
     createUser,
     changeUserRole,
     changeUserActive,
+    changeUserRut,
   } = useSuperAdminUsers();
   const [formData, setFormData] = useState<CreateManagedUserInput>({
     nombre: '',
     email: '',
+    rut: '',
     temporaryPassword: '',
     rol: 'USER',
     activo: true,
@@ -49,6 +52,9 @@ export function UserManagementPanel() {
   const [roleFilter, setRoleFilter] = useState<UserRole | 'TODOS'>('TODOS');
   const [stateFilter, setStateFilter] = useState<UserStateFilter>('TODOS');
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingRutUserId, setEditingRutUserId] = useState<string | null>(null);
+  const [rutDraft, setRutDraft] = useState('');
+  const [rutEditError, setRutEditError] = useState<string | null>(null);
 
   const visibleUsers = useMemo(() => {
     const search = normalizeSearch(searchTerm.trim());
@@ -85,6 +91,7 @@ export function UserManagementPanel() {
       setFormData({
         nombre: '',
         email: '',
+        rut: '',
         temporaryPassword: '',
         rol: 'USER',
         activo: true,
@@ -126,6 +133,32 @@ export function UserManagementPanel() {
     }
 
     await changeUserActive(user.uid, nextActive).catch(() => undefined);
+  }
+
+  function startRutEdit(user: ManagedUser) {
+    setEditingRutUserId(user.uid);
+    setRutDraft(user.rut ?? '');
+    setRutEditError(null);
+  }
+
+  function cancelRutEdit() {
+    setEditingRutUserId(null);
+    setRutDraft('');
+    setRutEditError(null);
+  }
+
+  async function handleRutSubmit(event: FormEvent<HTMLFormElement>, user: ManagedUser) {
+    event.preventDefault();
+
+    try {
+      setRutEditError(null);
+      await changeUserRut(user.uid, rutDraft);
+      cancelRutEdit();
+    } catch (saveError) {
+      setRutEditError(
+        saveError instanceof Error ? saveError.message : 'No se pudo actualizar el RUT.',
+      );
+    }
   }
 
   return (
@@ -185,6 +218,18 @@ export function UserManagementPanel() {
             </label>
 
             <label>
+              <span>RUT</span>
+              <input
+                type="text"
+                value={formData.rut}
+                onChange={(event) => updateFormField('rut', event.target.value)}
+                placeholder="12.345.678-5"
+                maxLength={12}
+                required
+              />
+            </label>
+
+            <label>
               <span>Contrasena temporal</span>
               <input
                 type="password"
@@ -237,7 +282,7 @@ export function UserManagementPanel() {
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Nombre, email o rol"
+            placeholder="Nombre, email o RUT"
           />
         </label>
         <label>
@@ -285,6 +330,7 @@ export function UserManagementPanel() {
               <tr>
                 <th scope="col">Nombre</th>
                 <th scope="col">Email</th>
+                <th scope="col">RUT</th>
                 <th scope="col">Rol</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Acciones</th>
@@ -295,6 +341,47 @@ export function UserManagementPanel() {
                 <tr key={user.uid}>
                   <td data-label="Nombre">{user.nombre}</td>
                   <td data-label="Email">{user.email}</td>
+                  <td data-label="RUT">
+                    {editingRutUserId === user.uid ? (
+                      <form className="inline-edit-form" onSubmit={(event) => handleRutSubmit(event, user)}>
+                        <input
+                          type="text"
+                          value={rutDraft}
+                          onChange={(event) => setRutDraft(event.target.value)}
+                          placeholder="12.345.678-5"
+                          maxLength={12}
+                          aria-label={`RUT de ${user.nombre}`}
+                          autoFocus
+                        />
+                        <div className="table-actions">
+                          <button type="submit" className="button button-primary button-small" disabled={isSaving}>
+                            Guardar
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-secondary button-small"
+                            onClick={cancelRutEdit}
+                            disabled={isSaving}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                        {rutEditError ? <p className="form-error">{rutEditError}</p> : null}
+                      </form>
+                    ) : (
+                      <div className="rut-cell">
+                        <span>{formatRut(user.rut) || '-'}</span>
+                        <button
+                          type="button"
+                          className="button button-secondary button-small"
+                          onClick={() => startRutEdit(user)}
+                          disabled={isSaving}
+                        >
+                          Editar RUT
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td data-label="Rol">
                     <select
                       className="table-select"

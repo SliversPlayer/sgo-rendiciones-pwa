@@ -17,12 +17,21 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
   return (
     <article className="rendicion-card user-rendicion-card">
       <div className="user-card-content">
+        <div className="card-badge-row">
+          <RendicionStatusBadge estado={rendicion.estado} />
+          <SyncStatusBadge status={rendicion.sync_status ?? 'LOCAL'} />
+        </div>
+
         <div className="card-header user-card-header">
           <div className="user-card-title">
-            <p className="card-kicker">Rendicion</p>
+            <p className="card-kicker">
+              {formatTipoRendicionNombre(
+                rendicion.tipo_rendicion_id,
+                rendicion.tipo_rendicion_nombre,
+              )}
+            </p>
             <h2>{rendicion.titulo}</h2>
           </div>
-          <RendicionStatusBadge estado={rendicion.estado} />
         </div>
 
         {rendicion.glosa_grupo ? (
@@ -51,12 +60,6 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
             <dt>Creada</dt>
             <dd>{formatDisplayDate(rendicion.fecha_creacion)}</dd>
           </div>
-          <div>
-            <dt>Sync</dt>
-            <dd>
-              <SyncStatusBadge status={rendicion.sync_status ?? 'LOCAL'} />
-            </dd>
-          </div>
           {rendicion.fecha_aprobacion ? (
             <div>
               <dt>Aprobada</dt>
@@ -75,7 +78,7 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
       <div className="card-actions user-card-actions">
         <div className="user-card-actions-row">
           <button type="button" className="button button-primary" onClick={() => onOpen(rendicion)}>
-            Ver gastos
+            Abrir
           </button>
           <button
             type="button"

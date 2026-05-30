@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppTopbar } from '../components/AppTopbar';
 import { RendicionStatusBadge } from '../components/StatusBadges';
 import { useAdminRendiciones } from '../hooks/useAdminRendiciones';
 import type { AdminEstadoFilter } from '../types/admin';
@@ -248,6 +249,8 @@ export function AdminPage() {
 
   return (
     <main className="app-shell">
+      <AppTopbar currentSection="admin" />
+
       <header className="app-header">
         <div>
           <p className="eyebrow">Panel admin</p>
@@ -256,10 +259,7 @@ export function AdminPage() {
             Revisa rendiciones enviadas, aprobadas y rechazadas desde Firestore.
           </p>
         </div>
-        <div className="header-actions">
-          <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
-            Volver
-          </button>
+        <div className="header-actions page-actions">
           <button type="button" className="button button-primary" onClick={() => void reload()}>
             Refrescar
           </button>

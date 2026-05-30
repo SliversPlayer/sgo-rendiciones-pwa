@@ -208,7 +208,7 @@ export function UserManagementPanel() {
         </div>
       </div>
 
-      <section className="form-panel wide-panel superadmin-form-panel" aria-labelledby="create-user-title">
+      <section className="form-panel wide-panel superadmin-form-panel management-form-panel" aria-labelledby="create-user-title">
         <div className="section-heading">
           <p className="eyebrow">Nuevo usuario</p>
           <h2 id="create-user-title">Crear cuenta</h2>
@@ -375,7 +375,14 @@ export function UserManagementPanel() {
         </section>
       ) : null}
 
-      <div className="filters-bar superadmin-filters" aria-label="Filtros de usuarios">
+      <div className="section-heading compact-heading with-action">
+        <div>
+          <p className="eyebrow">Listado</p>
+          <h2>Usuarios registrados</h2>
+        </div>
+      </div>
+
+      <div className="filters-bar superadmin-filters management-toolbar" aria-label="Filtros de usuarios">
         <label>
           <span>Buscar</span>
           <input

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppTopbar } from '../components/AppTopbar';
 import { CatalogManagementPanel } from '../components/CatalogManagementPanel';
 import { UserManagementPanel } from '../components/UserManagementPanel';
 
@@ -11,6 +12,8 @@ export function SuperAdminPage() {
 
   return (
     <main className="app-shell">
+      <AppTopbar currentSection="superadmin" />
+
       <header className="app-header">
         <div>
           <p className="eyebrow">Panel superadmin</p>

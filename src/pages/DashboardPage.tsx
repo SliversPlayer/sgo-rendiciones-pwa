@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ConnectionStatus } from '../components/ConnectionStatus';
+import { AppTopbar } from '../components/AppTopbar';
 import { RendicionCard } from '../components/RendicionCard';
 import { RendicionForm } from '../components/RendicionForm';
 import { useAuth } from '../hooks/useAuth';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useRendiciones } from '../hooks/useRendiciones';
 import type { Rendicion, RendicionEstado, RendicionFormData } from '../types/rendicion';
 import { formatCurrency } from '../utils/format';
 import { getEstadoLabel, isRendicionEditable } from '../utils/rendicionStatus';
-import { isAdminUser, isSuperAdminUser } from '../utils/roles';
 
 type ViewMode = 'list' | 'create' | 'edit';
 type EstadoFilter = 'TODAS' | RendicionEstado;
@@ -49,8 +47,7 @@ function matchesSearch(rendicion: Rendicion, search: string): boolean {
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const isOnline = useOnlineStatus();
-  const { userProfile, logout } = useAuth();
+  const { userProfile } = useAuth();
   const { rendiciones, stats, isLoading, error, addRendicion, saveRendicion, removeRendicion } =
     useRendiciones();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -104,7 +101,9 @@ export function DashboardPage() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
+      <AppTopbar currentSection="dashboard" />
+
+      <header className="app-header dashboard-hero">
         <div>
           <p className="eyebrow">SGO Rendiciones PWA</p>
           <h1>SGO Rendiciones</h1>
@@ -114,30 +113,6 @@ export function DashboardPage() {
           <p className="demo-user">
             {userProfile?.nombre ?? 'Usuario'} - {userProfile?.email}
           </p>
-        </div>
-        <div className="header-actions dashboard-header-actions">
-          <ConnectionStatus isOnline={isOnline} />
-          {isAdminUser(userProfile) ? (
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => navigate('/admin')}
-            >
-              Panel admin
-            </button>
-          ) : null}
-          {isSuperAdminUser(userProfile) ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => navigate('/superadmin')}
-            >
-              Panel superadmin
-            </button>
-          ) : null}
-          <button type="button" className="button button-secondary" onClick={() => void logout()}>
-            Cerrar sesion
-          </button>
         </div>
       </header>
 
@@ -155,7 +130,7 @@ export function DashboardPage() {
 
       {viewMode === 'list' ? (
         <section className="dashboard-section" aria-labelledby="rendiciones-title">
-          <div className="section-heading with-action">
+          <div className="section-heading with-action dashboard-toolbar">
             <div>
               <p className="eyebrow">Dashboard</p>
               <h2 id="rendiciones-title">Mis rendiciones</h2>
@@ -188,7 +163,7 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="filters-bar" aria-label="Filtros de rendiciones">
+          <div className="filters-bar dashboard-filter-panel" aria-label="Filtros de rendiciones">
             <label>
               <span>Buscar</span>
               <input

@@ -193,7 +193,7 @@ export function CatalogManagementPanel() {
         ))}
       </div>
 
-      <section className="form-panel wide-panel superadmin-form-panel" aria-labelledby="catalog-form-title">
+      <section className="form-panel wide-panel superadmin-form-panel management-form-panel" aria-labelledby="catalog-form-title">
         <div className="section-heading">
           <p className="eyebrow">{editingItem ? 'Editar' : 'Nuevo'}</p>
           <h2 id="catalog-form-title">
@@ -263,7 +263,7 @@ export function CatalogManagementPanel() {
         </form>
       </section>
 
-      <div className="filters-bar superadmin-filters" aria-label="Filtros de catalogos">
+      <div className="filters-bar superadmin-filters management-toolbar" aria-label="Filtros de catalogos">
         <label>
           <span>Buscar</span>
           <input

@@ -203,6 +203,18 @@ npm run preview
 
 Actualmente `npm test` ejecuta el typecheck de TypeScript y pruebas locales con `node --test` para configuracion, reglas Firebase y resguardos offline/PWA. El smoke Firebase valida autenticacion, perfil y permisos basicos reales para `superadmin@sgo.cl`, `admin@sgo.cl` y `user@sgo.cl`.
 
+## Deploy En Vercel
+
+El proyecto incluye `vercel.json` para desplegar la app Vite como SPA:
+
+- build command: `npm run build`
+- output directory: `dist`
+- rewrite de rutas a `/index.html`
+- cache largo para `/assets/*`
+- `no-cache` para `index.html` y `sw.js`
+
+Configurar en Vercel las mismas variables `VITE_*` usadas localmente antes de desplegar.
+
 ## Variables De Entorno
 
 La integracion Firebase usa variables `VITE_*`. No existe un `.env.example` en el repo, pero la app espera:

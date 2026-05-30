@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { AppTopbar } from '../components/AppTopbar';
 import { RendicionStatusBadge } from '../components/StatusBadges';
 import { useAdminRendicionDetalle } from '../hooks/useAdminRendiciones';
 import { formatDisplayDate } from '../utils/date';
@@ -35,6 +36,8 @@ export function AdminRendicionDetallePage() {
 
   return (
     <main className="app-shell">
+      <AppTopbar currentSection="admin" />
+
       <header className="app-header">
         <div>
           <p className="eyebrow">Detalle admin</p>
@@ -198,11 +201,12 @@ export function AdminRendicionDetallePage() {
                     <div>
                       <p className="card-kicker">{gasto.tipo_documento_nombre}</p>
                       <h3>{gasto.glosa}</h3>
-                      <p className="card-muted">
-                        {gasto.centro_negocio_nombre} - Documento {gasto.numero_documento}
-                      </p>
+                      <div className="gasto-meta-row">
+                        <span>{gasto.centro_negocio_nombre}</span>
+                        <span>Documento {gasto.numero_documento}</span>
+                      </div>
                     </div>
-                    <strong>{formatCurrency(gasto.monto)}</strong>
+                    <strong className="amount-value">{formatCurrency(gasto.monto)}</strong>
                   </div>
 
                   <dl className="card-meta admin-snapshots">

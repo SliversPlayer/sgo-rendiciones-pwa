@@ -30,11 +30,12 @@ export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoL
               <div>
                 <p className="card-kicker">{gasto.tipo_documento_nombre}</p>
                 <h3>{gasto.glosa}</h3>
-                <p className="card-muted">
-                  {centroNegocioNombre} - Documento {gasto.numero_documento}
-                </p>
+                <div className="gasto-meta-row">
+                  <span>{centroNegocioNombre}</span>
+                  <span>Documento {gasto.numero_documento}</span>
+                </div>
               </div>
-              <strong>{formatCurrency(gasto.monto)}</strong>
+              <strong className="amount-value">{formatCurrency(gasto.monto)}</strong>
             </div>
 
             {!readOnly ? (

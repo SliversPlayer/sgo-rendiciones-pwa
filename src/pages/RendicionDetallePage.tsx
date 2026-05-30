@@ -1,5 +1,5 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ConnectionStatus } from '../components/ConnectionStatus';
+import { AppTopbar } from '../components/AppTopbar';
 import { GastoList } from '../components/GastoList';
 import { RendicionStatusBadge, SyncStatusBadge } from '../components/StatusBadges';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
@@ -49,6 +49,8 @@ export function RendicionDetallePage() {
 
   return (
     <main className="app-shell">
+      <AppTopbar />
+
       <header className="app-header">
         <div>
           <p className="eyebrow">Detalle de rendicion</p>
@@ -57,7 +59,6 @@ export function RendicionDetallePage() {
             {rendicion?.glosa_grupo ?? 'Sin glosa de grupo registrada.'}
           </p>
         </div>
-        <ConnectionStatus isOnline={isOnline} />
       </header>
 
       <div className="top-actions detail-actions">

@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
+    "test": "npm run typecheck && node --test tests/*.test.mjs",
+    "test:smoke:firebase": "node scripts/firebase-smoke.mjs",
     "preview": "vite preview --host"
   },
   "dependencies": {

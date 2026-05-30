@@ -122,6 +122,22 @@ service cloud.firestore {
       return estado in ['BORRADOR', 'ENVIANDO', 'ENVIADA'];
     }
 
+    function validOptionalString(value) {
+      return value == null || value is string;
+    }
+
+    function validRequiredString(value) {
+      return value is string && value.size() > 0;
+    }
+
+    function validPositiveNumber(value) {
+      return value is number && value > 0;
+    }
+
+    function validNonNegativeNumber(value) {
+      return value is number && value >= 0;
+    }
+
     function validUserEstadoTransition(before, after) {
       return after in ['BORRADOR', 'ENVIANDO', 'ENVIADA', 'RECHAZADA', 'ERROR'] &&
         (
@@ -139,6 +155,12 @@ service cloud.firestore {
         request.resource.data.keys().hasOnly(userRendicionWriteFields()) &&
         hasNormalizedOwner(request.resource.data) &&
         request.resource.data.id == rendicionId &&
+        validRequiredString(request.resource.data.titulo) &&
+        validRequiredString(request.resource.data.tipo_rendicion_id) &&
+        validRequiredString(request.resource.data.tipo_rendicion_nombre) &&
+        validRequiredString(request.resource.data.tipo_rendicion_cuenta_contable) &&
+        validNonNegativeNumber(request.resource.data.total_gastos) &&
+        validNonNegativeNumber(request.resource.data.monto_total) &&
         validUserCreateEstado(request.resource.data.estado);
     }
 
@@ -148,6 +170,12 @@ service cloud.firestore {
         hasNormalizedOwner(request.resource.data) &&
         request.resource.data.id == rendicionId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(userRendicionWriteFields()) &&
+        validRequiredString(request.resource.data.titulo) &&
+        validRequiredString(request.resource.data.tipo_rendicion_id) &&
+        validRequiredString(request.resource.data.tipo_rendicion_nombre) &&
+        validRequiredString(request.resource.data.tipo_rendicion_cuenta_contable) &&
+        validNonNegativeNumber(request.resource.data.total_gastos) &&
+        validNonNegativeNumber(request.resource.data.monto_total) &&
         validUserEstadoTransition(resource.data.estado, request.resource.data.estado);
     }
 
@@ -244,6 +272,20 @@ service cloud.firestore {
         request.resource.data.keys().hasOnly(gastoWriteFields()) &&
         request.resource.data.id == gastoId &&
         request.resource.data.rendicion_id == rendicionId &&
+        validRequiredString(request.resource.data.fecha) &&
+        validRequiredString(request.resource.data.glosa) &&
+        validRequiredString(request.resource.data.centro_negocio_id) &&
+        validRequiredString(request.resource.data.centro_negocio_nombre) &&
+        validRequiredString(request.resource.data.centro_negocio_codigo) &&
+        validRequiredString(request.resource.data.tipo_documento_id) &&
+        validRequiredString(request.resource.data.tipo_documento_nombre) &&
+        validRequiredString(request.resource.data.tipo_documento_codigo) &&
+        validRequiredString(request.resource.data.tipo_documento_cuenta_contable) &&
+        validRequiredString(request.resource.data.numero_documento) &&
+        validRequiredString(request.resource.data.tipo_gasto_id) &&
+        validRequiredString(request.resource.data.tipo_gasto_nombre) &&
+        validRequiredString(request.resource.data.tipo_gasto_cuenta_contable) &&
+        validPositiveNumber(request.resource.data.monto) &&
         hasNormalizedGastoOwner(request.resource.data);
     }
 

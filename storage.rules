@@ -73,8 +73,15 @@ service firebase.storage {
         (isAdmin() && isAdminVisibleEstado(rendicion.estado));
     }
 
+    function isEditableRendicion(rendicionId) {
+      let rendicion = rendicionData(rendicionId);
+
+      return rendicion.estado in ['BORRADOR', 'ENVIANDO', 'RECHAZADA', 'ERROR'];
+    }
+
     function isAllowedAdjuntoContentType() {
-      return request.resource.contentType.matches('image/.*') ||
+      return request.resource.contentType == 'image/jpeg' ||
+        request.resource.contentType == 'image/png' ||
         request.resource.contentType == 'application/pdf';
     }
 
@@ -90,12 +97,14 @@ service firebase.storage {
       allow create, update: if isActiveUser() &&
         rendicionExists(rendicionId) &&
         isOwnRendicion(rendicionId) &&
+        isEditableRendicion(rendicionId) &&
         isAllowedAdjuntoContentType() &&
         isAllowedAdjuntoSize();
 
       allow delete: if isActiveUser() &&
         rendicionExists(rendicionId) &&
-        isOwnRendicion(rendicionId);
+        isOwnRendicion(rendicionId) &&
+        isEditableRendicion(rendicionId);
     }
 
     match /{allPaths=**} {

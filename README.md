@@ -182,13 +182,26 @@ Generar build de produccion:
 npm run build
 ```
 
+Ejecutar validacion automatica disponible:
+
+```bash
+npm test
+```
+
+Ejecutar smoke real contra Firebase con las cuentas base:
+
+```powershell
+$env:SGO_SMOKE_PASSWORD='password-compartido'
+npm run test:smoke:firebase
+```
+
 Previsualizar el build:
 
 ```bash
 npm run preview
 ```
 
-No hay script de lint o test configurado actualmente en `package.json`.
+Actualmente `npm test` ejecuta el typecheck de TypeScript y pruebas locales con `node --test` para configuracion, reglas Firebase y resguardos offline/PWA. El smoke Firebase valida autenticacion, perfil y permisos basicos reales para `superadmin@sgo.cl`, `admin@sgo.cl` y `user@sgo.cl`.
 
 ## Variables De Entorno
 
@@ -203,7 +216,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 ```
 
-Estas variables deben definirse en `.env` local o en el entorno de despliegue. No se deben versionar secretos ni configuraciones privadas.
+Estas variables deben definirse en `.env` local o en el entorno de despliegue. Existe un `.env.example` con la plantilla esperada. No se deben versionar secretos ni configuraciones privadas.
 
 ## Estructura Del Proyecto
 

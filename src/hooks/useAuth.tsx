@@ -33,6 +33,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const PROFILE_CACHE_KEY_PREFIX = 'sgo:user-profile:';
 
 function getDefaultName(email: string): string {
   return email.split('@')[0] || email;
@@ -76,6 +77,38 @@ function normalizeUserProfile(user: User, data: Partial<UserProfile>): UserProfi
     updatedAt: data.updatedAt ?? createdAt,
     created_at: data.created_at ?? createdAt,
   };
+}
+
+function getProfileCacheKey(uid: string): string {
+  return `${PROFILE_CACHE_KEY_PREFIX}${uid}`;
+}
+
+function readCachedProfile(user: User): UserProfile | null {
+  try {
+    const rawProfile = window.localStorage.getItem(getProfileCacheKey(user.uid));
+
+    if (!rawProfile) {
+      return null;
+    }
+
+    const profile = JSON.parse(rawProfile) as Partial<UserProfile>;
+
+    if (profile.uid !== user.uid) {
+      return null;
+    }
+
+    return normalizeUserProfile(user, profile);
+  } catch {
+    return null;
+  }
+}
+
+function cacheProfile(profile: UserProfile): void {
+  try {
+    window.localStorage.setItem(getProfileCacheKey(profile.uid), JSON.stringify(profile));
+  } catch {
+    // localStorage can be unavailable in private browsing or constrained webviews.
+  }
 }
 
 async function getUserProfile(user: User): Promise<UserProfile> {
@@ -171,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const userRef = doc(firestoreDb, 'usuarios', user.uid);
         const profile = await getUserProfile(user);
+        cacheProfile(profile);
 
         if (profile.activo === false) {
           setAuthError('Su cuenta esta desactivada. Contacte al administrador.');
@@ -211,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAuthError(null);
             setCurrentUser(user);
             setUserProfile(nextProfile);
+            cacheProfile(nextProfile);
           },
           () => {
             if (!navigator.onLine) {
@@ -226,10 +261,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       } catch (error) {
         if (!navigator.onLine) {
-          setCurrentUser(null);
-          setUserProfile(null);
-          setAuthError('No se pudo cargar tu perfil de usuario.');
-          await signOut(firebaseAuth);
+          const cachedProfile = readCachedProfile(user) ?? buildLocalProfile(user);
+
+          setCurrentUser(user);
+          setUserProfile(cachedProfile);
+          setAuthError(null);
           return;
         }
 

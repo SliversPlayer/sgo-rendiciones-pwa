@@ -1,9 +1,7 @@
-const CACHE_NAME = 'sgo-rendiciones-v1';
+const CACHE_NAME = 'sgo-rendiciones-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/assets/index.js',
-  '/assets/index.css',
   '/manifest.webmanifest',
   '/icons/icon.svg',
 ];
@@ -28,6 +26,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', responseClone));
+          return networkResponse;
+        })
+        .catch(() => caches.match('/index.html')),
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -36,11 +47,15 @@ self.addEventListener('fetch', (event) => {
 
       return fetch(event.request)
         .then((networkResponse) => {
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
+            return networkResponse;
+          }
+
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
           return networkResponse;
         })
-        .catch(() => caches.match('/index.html'));
+        .catch(() => new Response('', { status: 504, statusText: 'Gateway Timeout' }));
     }),
   );
 });

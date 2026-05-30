@@ -1,11 +1,8 @@
 import type { Rendicion } from '../types/rendicion';
+import { RendicionStatusBadge, SyncStatusBadge } from './StatusBadges';
 import { formatDisplayDate } from '../utils/date';
 import { formatTipoRendicionNombre } from '../utils/format';
-import {
-  getEstadoLabel,
-  getSyncStatusLabel,
-  isRendicionEditable,
-} from '../utils/rendicionStatus';
+import { isRendicionEditable } from '../utils/rendicionStatus';
 
 interface RendicionCardProps {
   rendicion: Rendicion;
@@ -25,9 +22,7 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
             <p className="card-kicker">Rendicion</p>
             <h2>{rendicion.titulo}</h2>
           </div>
-          <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
-            {getEstadoLabel(rendicion.estado)}
-          </span>
+          <RendicionStatusBadge estado={rendicion.estado} />
         </div>
 
         {rendicion.glosa_grupo ? (
@@ -58,7 +53,9 @@ export function RendicionCard({ rendicion, onOpen, onEdit, onDelete }: Rendicion
           </div>
           <div>
             <dt>Sync</dt>
-            <dd>{getSyncStatusLabel(rendicion.sync_status ?? 'LOCAL')}</dd>
+            <dd>
+              <SyncStatusBadge status={rendicion.sync_status ?? 'LOCAL'} />
+            </dd>
           </div>
           {rendicion.fecha_aprobacion ? (
             <div>

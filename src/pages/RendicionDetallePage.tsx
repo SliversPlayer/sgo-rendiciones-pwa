@@ -1,13 +1,13 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { GastoList } from '../components/GastoList';
+import { RendicionStatusBadge, SyncStatusBadge } from '../components/StatusBadges';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useRendicionDetalle } from '../hooks/useRendicionDetalle';
 import { useRendicionSync } from '../hooks/useRendicionSync';
 import type { Gasto } from '../types/gasto';
 import { formatDisplayDate } from '../utils/date';
 import { formatTipoRendicionNombre } from '../utils/format';
-import { getEstadoLabel, getSyncStatusLabel } from '../utils/rendicionStatus';
 
 export function RendicionDetallePage() {
   const { id: rendicionId } = useParams<{ id: string }>();
@@ -37,6 +37,15 @@ export function RendicionDetallePage() {
     await send(rendicionId);
     await reload();
   };
+  const canShowSendAction = rendicion && rendicion.estado !== 'ENVIADA' && rendicion.estado !== 'APROBADA';
+  const canSendRendicion =
+    Boolean(rendicion) &&
+    isOnline &&
+    !isSending &&
+    isEditable &&
+    isRendicionValida &&
+    rendicion?.estado !== 'ENVIANDO';
+  const shouldPrioritizeSend = Boolean(canShowSendAction && isEditable && isRendicionValida);
 
   return (
     <main className="app-shell">
@@ -55,26 +64,19 @@ export function RendicionDetallePage() {
         <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
           Volver
         </button>
-        {rendicion && rendicion.estado !== 'ENVIADA' && rendicion.estado !== 'APROBADA' ? (
+        {canShowSendAction ? (
           <button
             type="button"
-            className="button button-primary"
+            className={`button ${shouldPrioritizeSend ? 'button-primary' : 'button-secondary'}`}
             onClick={() => void handleSend()}
-            disabled={
-              !rendicion ||
-              !isOnline ||
-              isSending ||
-              !isEditable ||
-              !isRendicionValida ||
-              rendicion.estado === 'ENVIANDO'
-            }
+            disabled={!canSendRendicion}
           >
-            {isSending || rendicion.estado === 'ENVIANDO' ? 'Enviando...' : 'Enviar rendicion'}
+            {isSending || rendicion?.estado === 'ENVIANDO' ? 'Enviando...' : 'Enviar rendicion'}
           </button>
         ) : null}
         <button
           type="button"
-          className="button button-primary"
+          className={`button ${shouldPrioritizeSend ? 'button-secondary' : 'button-primary'}`}
           onClick={() => navigate(`/rendiciones/${rendicionId}/gastos/nuevo`)}
           disabled={!rendicion || !isEditable}
         >
@@ -99,10 +101,12 @@ export function RendicionDetallePage() {
           <div className="detail-summary">
             <div>
               <p className="eyebrow">Estado local</p>
-              <h2>{getEstadoLabel(rendicion.estado)}</h2>
-              <p className="card-muted">
-                {isRendicionValida ? 'Rendicion valida' : 'Rendicion incompleta'} - Sync:{' '}
-                {getSyncStatusLabel(rendicion.sync_status ?? 'LOCAL')}
+              <div className="status-stack">
+                <RendicionStatusBadge estado={rendicion.estado} />
+                <SyncStatusBadge status={rendicion.sync_status ?? 'LOCAL'} />
+              </div>
+              <p className={isRendicionValida ? 'notice notice-success compact-notice' : 'notice notice-warning compact-notice'}>
+                {isRendicionValida ? 'Lista para enviar' : 'Faltan datos para enviar'}
               </p>
               <p className="card-muted">
                 Tipo:{' '}

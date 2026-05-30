@@ -1,10 +1,10 @@
 import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { RendicionStatusBadge } from '../components/StatusBadges';
 import { useAdminRendicionDetalle } from '../hooks/useAdminRendiciones';
 import { formatDisplayDate } from '../utils/date';
 import { formatCurrency, formatTipoRendicionNombre } from '../utils/format';
 import { getRendicionOwnerLabel } from '../utils/rendicionOwner';
-import { getEstadoLabel } from '../utils/rendicionStatus';
 
 export function AdminRendicionDetallePage() {
   const { id: rendicionId } = useParams<{ id: string }>();
@@ -69,7 +69,9 @@ export function AdminRendicionDetallePage() {
           <section className="detail-summary admin-summary" aria-labelledby="admin-summary-title">
             <div>
               <p className="eyebrow">Estado</p>
-              <h2 id="admin-summary-title">{getEstadoLabel(rendicion.estado)}</h2>
+              <div id="admin-summary-title" className="status-stack">
+                <RendicionStatusBadge estado={rendicion.estado} />
+              </div>
               <div className="owner-summary">
                 <p className="eyebrow">Dueno</p>
                 <strong>{getRendicionOwnerLabel(rendicion)}</strong>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RendicionStatusBadge } from '../components/StatusBadges';
 import { useAdminRendiciones } from '../hooks/useAdminRendiciones';
 import type { AdminEstadoFilter } from '../types/admin';
 import { formatDisplayDate } from '../utils/date';
@@ -361,9 +362,7 @@ export function AdminPage() {
                       <p className="card-kicker">Dueno: {getRendicionOwnerLabel(rendicion)}</p>
                       <h2>{rendicion.titulo}</h2>
                     </div>
-                    <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
-                      {getEstadoLabel(rendicion.estado)}
-                    </span>
+                    <RendicionStatusBadge estado={rendicion.estado} />
                   </div>
 
                   <dl className="card-meta">
@@ -435,9 +434,7 @@ export function AdminPage() {
                       )}
                     </td>
                     <td data-label="Estado" className="status-cell">
-                      <span className={`status-pill status-${rendicion.estado.toLowerCase()}`}>
-                        {getEstadoLabel(rendicion.estado)}
-                      </span>
+                      <RendicionStatusBadge estado={rendicion.estado} />
                     </td>
                     <td data-label="Fecha envio">
                       {rendicion.fecha_envio ? formatDisplayDate(rendicion.fecha_envio) : 'Sin fecha'}

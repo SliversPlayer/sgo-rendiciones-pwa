@@ -35,7 +35,7 @@ export function LoginPage() {
         <div className="section-heading">
           <p className="eyebrow">SGO Rendiciones PWA</p>
           <h1 id="login-title">Iniciar sesion</h1>
-          <p className="header-copy">Accede con el usuario creado en Firebase Console.</p>
+          <p className="header-copy">Ingresa con tu cuenta corporativa para gestionar rendiciones.</p>
         </div>
 
         <form className="rendicion-form" onSubmit={handleSubmit}>
@@ -78,7 +78,7 @@ export function LoginPage() {
               setIsPasswordResetOpen(true);
             }}
           >
-            Olvido su contrasena?
+            Recuperar contrasena
           </button>
         </form>
       </section>

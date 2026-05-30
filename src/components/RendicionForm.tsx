@@ -74,19 +74,25 @@ export function RendicionForm({ initialRendicion, onSubmit, onCancel }: Rendicio
       </div>
 
       <form className="rendicion-form" onSubmit={handleSubmit}>
-        <label>
-          <span>Titulo</span>
-          <input
-            type="text"
-            value={titulo}
-            onChange={(event) => setTitulo(event.target.value)}
-            placeholder="Ej: Visita oficina regional"
-            maxLength={120}
-            autoFocus
-          />
-        </label>
+        <div className="form-section">
+          <div className="form-section-heading">
+            <h3>Datos generales</h3>
+          </div>
 
-        <fieldset className="radio-card-group">
+          <label>
+            <span>Titulo</span>
+            <input
+              type="text"
+              value={titulo}
+              onChange={(event) => setTitulo(event.target.value)}
+              placeholder="Ej: Visita oficina regional"
+              maxLength={120}
+              autoFocus
+            />
+          </label>
+        </div>
+
+        <fieldset className="radio-card-group form-section">
           <legend>Tipo de rendicion *</legend>
           {isCatalogosLoading ? <p className="notice">Cargando catalogos locales...</p> : null}
           {catalogosError ? <p className="notice notice-error">{catalogosError}</p> : null}
@@ -110,16 +116,22 @@ export function RendicionForm({ initialRendicion, onSubmit, onCancel }: Rendicio
           </div>
         </fieldset>
 
-        <label>
-          <span>Glosa de grupo</span>
-          <textarea
-            value={glosaGrupo}
-            onChange={(event) => setGlosaGrupo(event.target.value)}
-            placeholder="Descripcion opcional"
-            maxLength={260}
-            rows={4}
-          />
-        </label>
+        <div className="form-section">
+          <div className="form-section-heading">
+            <h3>Contexto</h3>
+          </div>
+
+          <label>
+            <span>Glosa de grupo</span>
+            <textarea
+              value={glosaGrupo}
+              onChange={(event) => setGlosaGrupo(event.target.value)}
+              placeholder="Descripcion opcional"
+              maxLength={260}
+              rows={4}
+            />
+          </label>
+        </div>
 
         {formError ? <p className="form-error">{formError}</p> : null}
 

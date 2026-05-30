@@ -75,104 +75,123 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
       </div>
 
       <form className="rendicion-form gasto-form" onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <label>
-            <span>Fecha</span>
-            <input
-              type="date"
-              value={data.fecha}
-              onChange={(event) => updateField('fecha', event.target.value)}
-            />
-          </label>
+        <div className="form-section">
+          <div className="form-section-heading">
+            <h3>Datos del gasto</h3>
+          </div>
+          <div className="form-grid">
+            <label>
+              <span>Fecha</span>
+              <input
+                type="date"
+                value={data.fecha}
+                onChange={(event) => updateField('fecha', event.target.value)}
+              />
+            </label>
 
-          <label>
-            <span>Glosa</span>
-            <input
-              type="text"
-              value={data.glosa}
-              onChange={(event) => updateField('glosa', event.target.value)}
-              placeholder="Ej: Taxi aeropuerto"
-              maxLength={160}
-              autoFocus
-            />
-          </label>
+            <label>
+              <span>Glosa</span>
+              <input
+                type="text"
+                value={data.glosa}
+                onChange={(event) => updateField('glosa', event.target.value)}
+                placeholder="Ej: Taxi aeropuerto"
+                maxLength={160}
+                autoFocus
+              />
+            </label>
 
-          <label>
-            <span>Centro de negocio</span>
-            <select
-              className={hasCentrosNegocio && data.centro_negocio_id ? 'is-filled' : ''}
-              value={hasCentrosNegocio ? data.centro_negocio_id : ''}
-              onChange={(event) => updateField('centro_negocio_id', event.target.value)}
-              disabled={isCentroNegocioDisabled}
-            >
-              <option value="">{centroNegocioPlaceholder}</option>
-              {catalogos.centrosNegocio.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="amount-field">
+              <span>Monto</span>
+              <input
+                type="number"
+                className="amount-input"
+                value={data.monto}
+                onChange={(event) => updateField('monto', event.target.value)}
+                placeholder="0"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                min="1"
+                step="1"
+              />
+            </label>
+          </div>
+        </div>
 
-          <label>
-            <span>Tipo documento</span>
-            <select
-              className={hasTiposDocumento && data.tipo_documento_id ? 'is-filled' : ''}
-              value={hasTiposDocumento ? data.tipo_documento_id : ''}
-              onChange={(event) => updateField('tipo_documento_id', event.target.value)}
-              disabled={isTipoDocumentoDisabled}
-            >
-              <option value="">{tipoDocumentoPlaceholder}</option>
-              {catalogos.tiposDocumento.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="form-section">
+          <div className="form-section-heading">
+            <h3>Clasificacion contable</h3>
+          </div>
+          <div className="form-grid">
+            <label>
+              <span>Centro de negocio</span>
+              <select
+                className={hasCentrosNegocio && data.centro_negocio_id ? 'is-filled' : ''}
+                value={hasCentrosNegocio ? data.centro_negocio_id : ''}
+                onChange={(event) => updateField('centro_negocio_id', event.target.value)}
+                disabled={isCentroNegocioDisabled}
+              >
+                <option value="">{centroNegocioPlaceholder}</option>
+                {catalogos.centrosNegocio.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label>
-            <span>Numero documento</span>
-            <input
-              type="text"
-              value={data.numero_documento}
-              onChange={(event) => updateField('numero_documento', event.target.value)}
-              placeholder="Ej: 123456"
-              maxLength={60}
-            />
-          </label>
+            <label>
+              <span>Tipo gasto</span>
+              <select
+                className={hasTiposGasto && data.tipo_gasto_id ? 'is-filled' : ''}
+                value={hasTiposGasto ? data.tipo_gasto_id : ''}
+                onChange={(event) => updateField('tipo_gasto_id', event.target.value)}
+                disabled={isTipoGastoDisabled}
+              >
+                <option value="">{tipoGastoPlaceholder}</option>
+                {catalogos.tiposGasto.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
 
-          <label>
-            <span>Tipo gasto</span>
-            <select
-              className={hasTiposGasto && data.tipo_gasto_id ? 'is-filled' : ''}
-              value={hasTiposGasto ? data.tipo_gasto_id : ''}
-              onChange={(event) => updateField('tipo_gasto_id', event.target.value)}
-              disabled={isTipoGastoDisabled}
-            >
-              <option value="">{tipoGastoPlaceholder}</option>
-              {catalogos.tiposGasto.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="form-section">
+          <div className="form-section-heading">
+            <h3>Documento</h3>
+          </div>
+          <div className="form-grid">
+            <label>
+              <span>Tipo documento</span>
+              <select
+                className={hasTiposDocumento && data.tipo_documento_id ? 'is-filled' : ''}
+                value={hasTiposDocumento ? data.tipo_documento_id : ''}
+                onChange={(event) => updateField('tipo_documento_id', event.target.value)}
+                disabled={isTipoDocumentoDisabled}
+              >
+                <option value="">{tipoDocumentoPlaceholder}</option>
+                {catalogos.tiposDocumento.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label>
-            <span>Monto</span>
-            <input
-              type="number"
-              className="amount-input"
-              value={data.monto}
-              onChange={(event) => updateField('monto', event.target.value)}
-              placeholder="0"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              min="1"
-              step="1"
-            />
-          </label>
+            <label>
+              <span>Numero documento</span>
+              <input
+                type="text"
+                value={data.numero_documento}
+                onChange={(event) => updateField('numero_documento', event.target.value)}
+                placeholder="Ej: 123456"
+                maxLength={60}
+              />
+            </label>
+          </div>
         </div>
 
         {isCatalogosLoading ? <p className="notice">Cargando catalogos locales...</p> : null}
@@ -183,9 +202,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
           </p>
         ) : null}
 
-        <fieldset className="adjuntos-fieldset">
+        <fieldset className="adjuntos-fieldset form-section">
           <legend>Adjuntos</legend>
-          <p className="field-help">{totalAdjuntosLabel}</p>
+          <div className="attachment-summary">
+            <p className="field-help">{totalAdjuntosLabel}</p>
+            <p className="card-muted">JPEG, PNG o PDF. Maximo 5 MB por archivo.</p>
+          </div>
 
           <div className="attachment-actions">
             <label
@@ -218,7 +240,12 @@ export function GastoForm({ initialGasto, onSubmit, onCancel }: GastoFormProps) 
                 </li>
               ))}
             </ul>
-          ) : null}
+          ) : (
+            <div className="inline-empty-state">
+              <strong>Sin comprobantes adjuntos</strong>
+              <span>Agrega al menos un archivo antes de enviar la rendicion.</span>
+            </div>
+          )}
         </fieldset>
 
         {formError ? <p className="form-error">{formError}</p> : null}

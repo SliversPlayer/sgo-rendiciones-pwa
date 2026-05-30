@@ -1,6 +1,17 @@
 :root {
-  color: #1f2933;
-  background: #f6f8f7;
+  color: #1f2937;
+  background: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-page: #f5f7fa;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.07);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
@@ -17,8 +28,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(18, 52, 59, 0.08), rgba(246, 248, 247, 0) 340px),
-    #f6f8f7;
+    linear-gradient(180deg, rgba(37, 99, 235, 0.07), rgba(245, 247, 250, 0) 320px),
+    var(--color-page);
 }
 
 button,
@@ -72,7 +83,7 @@ button {
 
 .app-header h1 {
   margin: 0;
-  color: #12343b;
+  color: var(--color-text);
   font-size: 2rem;
   line-height: 1.1;
 }
@@ -117,8 +128,8 @@ button {
   padding: 10px 14px;
   border: 1px solid #d9e2df;
   border-radius: 8px;
-  background: #ffffff;
-  color: #263238;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -131,11 +142,11 @@ button {
 }
 
 .connection-dot.is-online {
-  background: #198754;
+  background: var(--color-success);
 }
 
 .connection-dot.is-offline {
-  background: #c62828;
+  background: var(--color-danger);
 }
 
 .dashboard-section,
@@ -151,12 +162,12 @@ button {
 
 .stat-card {
   display: grid;
-  gap: 6px;
-  border: 1px solid #d9e2df;
+  gap: 8px;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 14px;
-  background: #ffffff;
-  box-shadow: 0 8px 18px rgba(18, 52, 59, 0.06);
+  background: var(--color-surface);
+  box-shadow: none;
 }
 
 .stat-card span {
@@ -167,7 +178,7 @@ button {
 }
 
 .stat-card strong {
-  color: #12343b;
+  color: var(--color-text);
   font-size: 1.35rem;
   line-height: 1.1;
 }
@@ -349,18 +360,19 @@ button {
 }
 
 .button-primary {
-  background: #12343b;
+  background: var(--color-primary);
   color: #ffffff;
-  box-shadow: 0 10px 20px rgba(18, 52, 59, 0.18);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
 }
 
 .button-primary:hover {
-  background: #0d2930;
+  background: var(--color-primary-dark);
 }
 
 .button-secondary {
-  background: #e8efed;
-  color: #12343b;
+  border: 1px solid var(--color-border);
+  background: #ffffff;
+  color: var(--color-text);
 }
 
 .button-subtle {
@@ -374,8 +386,8 @@ button {
 }
 
 .button-danger {
-  background: #f8d7da;
-  color: #8a1c25;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .rendiciones-grid {
@@ -388,8 +400,8 @@ button {
 .form-panel {
   border: 1px solid #d9e2df;
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(18, 52, 59, 0.08);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
 }
 
 .rendicion-card {
@@ -445,6 +457,96 @@ button {
 .status-rechazada {
   background: #f8d7da;
   color: #8a1c25;
+}
+
+.status-badge,
+.sync-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-badge-dot,
+.sync-badge-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.status-borrador {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.status-enviada {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-aprobada,
+.status-active {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.status-enviando,
+.status-pendiente_envio {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.status-error,
+.status-rechazada {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.status-inactive {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.sync-synced {
+  border-color: #d1fae5;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.sync-pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.sync-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0 10px;
 }
 
 .status-active {
@@ -523,23 +625,36 @@ button {
 .notice {
   border-radius: 8px;
   padding: 12px 14px;
-  background: #eef5f3;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
 }
 
 .notice-error,
 .form-error {
-  color: #8a1c25;
-  background: #f8d7da;
+  border-color: #fecaca;
+  color: #991b1b;
+  background: #fef2f2;
 }
 
 .notice-success {
-  color: #17623a;
-  background: #e6f4ea;
+  border-color: #bbf7d0;
+  color: #166534;
+  background: #f0fdf4;
 }
 
 .notice-warning {
-  color: #8a5a00;
-  background: #fff4d6;
+  border-color: #fde68a;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.compact-notice {
+  width: fit-content;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 800;
 }
 
 .auth-shell {
@@ -594,6 +709,28 @@ button {
 .rendicion-form {
   display: grid;
   gap: 16px;
+}
+
+.form-section {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.form-section-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.form-section-heading h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+  line-height: 1.2;
 }
 
 .rendicion-form label {
@@ -738,7 +875,7 @@ button {
   gap: 14px;
   min-width: 0;
   margin: 0;
-  border: 1px solid #d9e2df;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 16px;
 }
@@ -879,6 +1016,33 @@ button {
   margin-top: 14px;
 }
 
+.attachment-summary {
+  display: grid;
+  gap: 8px;
+}
+
+.attachment-summary .card-muted {
+  margin: 0;
+}
+
+.inline-empty-state {
+  display: grid;
+  gap: 4px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+  color: var(--color-muted);
+}
+
+.inline-empty-state strong {
+  color: var(--color-text);
+}
+
+.amount-field input {
+  font-weight: 900;
+}
+
 .user-rendicion-card {
   display: flex;
   min-height: 100%;
@@ -925,7 +1089,8 @@ button {
   overflow-wrap: anywhere;
 }
 
-.user-card-header .status-pill {
+.user-card-header .status-pill,
+.user-card-header .status-badge {
   max-width: 132px;
   white-space: nowrap;
 }
@@ -990,7 +1155,8 @@ button {
   overflow-wrap: anywhere;
 }
 
-.admin-card-header .status-pill {
+.admin-card-header .status-pill,
+.admin-card-header .status-badge {
   max-width: 128px;
   white-space: nowrap;
 }
@@ -1051,10 +1217,10 @@ button {
 
 .admin-table-wrap {
   overflow-x: auto;
-  border: 1px solid #d9e2df;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(18, 52, 59, 0.08);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
 }
 
 .admin-rendiciones-table {
@@ -1076,7 +1242,8 @@ button {
 }
 
 .admin-rendiciones-table th {
-  color: #62736f;
+  background: #f8fafc;
+  color: var(--color-muted);
   font-size: 0.76rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1103,6 +1270,7 @@ button {
 
 .numeric-cell {
   white-space: nowrap;
+  text-align: right;
 }
 
 .status-cell {
@@ -1322,6 +1490,69 @@ button {
 
   .filter-modal-actions .button-primary {
     order: -1;
+  }
+
+  .admin-table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .admin-rendiciones-table,
+  .admin-rendiciones-table thead,
+  .admin-rendiciones-table tbody,
+  .admin-rendiciones-table tr,
+  .admin-rendiciones-table th,
+  .admin-rendiciones-table td {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-rendiciones-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .admin-rendiciones-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .admin-rendiciones-table tr {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .admin-rendiciones-table td {
+    display: grid;
+    grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid #eef2f7;
+    padding: 12px 14px;
+  }
+
+  .admin-rendiciones-table td::before {
+    content: attr(data-label);
+    color: var(--color-muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .admin-rendiciones-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .numeric-cell {
+    text-align: left;
   }
 
   .sticky-actions {

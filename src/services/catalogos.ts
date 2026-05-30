@@ -3,7 +3,7 @@ import tiposDocumentoCsv from '../../docs/catalogos/tipos_documento.csv?raw';
 import tiposGastoCsv from '../../docs/catalogos/tipos_gasto.csv?raw';
 import tiposRendicionCsv from '../../docs/catalogos/tipos_rendicion.csv?raw';
 import type { Table } from 'dexie';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import type {
   CentroNegocio,
   CatalogoBase,
@@ -23,6 +23,9 @@ import { firebaseAuth, firestoreDb } from './firebase/firebase';
 
 type CsvRow = Record<string, string>;
 type CatalogoSource = 'CSV seed -> Dexie';
+interface RefreshCatalogosOptions {
+  includeInactive?: boolean;
+}
 type CatalogoTable<T extends CatalogoBase> = Table<T, string>;
 type RemoteCatalogoData = Partial<CatalogoBase> & {
   cuenta_contable?: string;
@@ -221,10 +224,22 @@ async function refreshRemoteTable<T extends CatalogoBase>(
   collectionName: string,
   table: CatalogoTable<T>,
   normalizer: (id: string, data: RemoteCatalogoData) => T,
+  includeInactive: boolean,
 ): Promise<void> {
-  const snapshot = await getDocs(collection(firestoreDb, collectionName));
+  const collectionRef = collection(firestoreDb, collectionName);
+  const snapshot = await getDocs(
+    includeInactive ? collectionRef : query(collectionRef, where('activo', '==', true)),
+  );
 
   if (snapshot.empty) {
+    if (!includeInactive) {
+      const existenceSnapshot = await getDocs(query(collectionRef, limit(1)));
+
+      if (!existenceSnapshot.empty) {
+        remoteCatalogosWithDocuments.add(collectionName);
+      }
+    }
+
     return;
   }
 
@@ -236,16 +251,40 @@ async function refreshRemoteTable<T extends CatalogoBase>(
   );
 }
 
-export async function refreshCatalogosFromRemote(): Promise<void> {
+export async function refreshCatalogosFromRemote(
+  options: RefreshCatalogosOptions = {},
+): Promise<void> {
   if (!navigator.onLine || !firebaseAuth.currentUser) {
     return;
   }
 
+  const includeInactive = options.includeInactive === true;
+
   await Promise.all([
-    refreshRemoteTable('centros_negocio', centrosNegocioTable, normalizeRemoteCentroNegocio),
-    refreshRemoteTable('tipos_documento', tiposDocumentoTable, normalizeRemoteTipoDocumento),
-    refreshRemoteTable('tipos_rendicion', tiposRendicionTable, normalizeRemoteTipoRendicion),
-    refreshRemoteTable('tipos_gasto', tiposGastoTable, normalizeRemoteTipoGasto),
+    refreshRemoteTable(
+      'centros_negocio',
+      centrosNegocioTable,
+      normalizeRemoteCentroNegocio,
+      includeInactive,
+    ),
+    refreshRemoteTable(
+      'tipos_documento',
+      tiposDocumentoTable,
+      normalizeRemoteTipoDocumento,
+      includeInactive,
+    ),
+    refreshRemoteTable(
+      'tipos_rendicion',
+      tiposRendicionTable,
+      normalizeRemoteTipoRendicion,
+      includeInactive,
+    ),
+    refreshRemoteTable(
+      'tipos_gasto',
+      tiposGastoTable,
+      normalizeRemoteTipoGasto,
+      includeInactive,
+    ),
   ]);
 }
 
@@ -265,11 +304,12 @@ async function ensureCatalogoSeed<T extends CatalogoBase>(
   const storedIds = new Set(storedItems.map((item) => item.id));
   const missingSeedItems = parsedItems.filter((item) => !storedIds.has(item.id));
   const hasManagedItems = storedItems.some((item) => item.createdAt || item.updatedAt);
+  const hasRemoteDocuments = remoteCatalogosWithDocuments.has(catalogName);
   const shouldRepairActiveCatalog =
     activeLocal === 0 &&
     activeSeed > 0 &&
     !hasManagedItems &&
-    !remoteCatalogosWithDocuments.has(catalogName);
+    !hasRemoteDocuments;
 
   if (totalLocal === 0 || shouldRepairActiveCatalog) {
     await table.bulkPut(parsedItems);
@@ -284,7 +324,7 @@ async function ensureCatalogoSeed<T extends CatalogoBase>(
     return;
   }
 
-  if (missingSeedItems.length > 0) {
+  if (missingSeedItems.length > 0 && !hasRemoteDocuments) {
     await table.bulkPut(missingSeedItems);
     logCatalogosDiagnostic('catalogo completado desde seed', {
       catalogo: catalogName,

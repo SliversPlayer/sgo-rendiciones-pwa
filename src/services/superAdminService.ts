@@ -14,6 +14,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import type { Table } from 'dexie';
 import { refreshCatalogosFromRemote, seedCatalogosIfNeeded } from './catalogos';
@@ -47,8 +48,19 @@ import { normalizeRut, validateRut } from '../utils/rut';
 
 type CatalogoTableItem = CentroNegocio | TipoDocumento | TipoGasto | TipoRendicion;
 type CatalogoTable = Table<CatalogoTableItem, string>;
+type RemoteCatalogoData = Partial<CatalogoBase> & {
+  cuenta_contable?: string;
+};
 
 const MIN_TEMPORARY_PASSWORD_LENGTH = 8;
+const CATALOG_KEYS: CatalogoKey[] = [
+  'centros_negocio',
+  'tipos_documento',
+  'tipos_gasto',
+  'tipos_rendicion',
+];
+
+let catalogPersistencePromise: Promise<void> | null = null;
 
 function getFirebaseErrorMessage(error: unknown): string {
   if (error instanceof FirebaseError) {
@@ -331,6 +343,95 @@ function getCatalogoCuentaContable(item?: CatalogoTableItem): string | undefined
   return item && 'cuenta_contable' in item ? item.cuenta_contable : undefined;
 }
 
+function buildRemoteCatalogItem(item: CatalogoTableItem, timestamp: string): CatalogoTableItem {
+  const remoteItem = {
+    id: item.id,
+    nombre: item.nombre,
+    codigo: getCatalogoCodigo(item),
+    activo: item.activo,
+    createdAt: item.createdAt ?? timestamp,
+    updatedAt: item.updatedAt ?? timestamp,
+  };
+  const cuentaContable = getCatalogoCuentaContable(item);
+
+  return cuentaContable
+    ? {
+        ...remoteItem,
+        cuenta_contable: cuentaContable,
+      } as CatalogoTableItem
+    : remoteItem as CatalogoTableItem;
+}
+
+function shouldPersistCatalogItem(
+  item: CatalogoTableItem,
+  remoteData: RemoteCatalogoData | undefined,
+): boolean {
+  if (!remoteData) {
+    return true;
+  }
+
+  return (
+    remoteData.id !== item.id ||
+    remoteData.nombre !== item.nombre ||
+    remoteData.codigo !== getCatalogoCodigo(item) ||
+    remoteData.activo !== item.activo ||
+    !remoteData.createdAt ||
+    !remoteData.updatedAt ||
+    ('cuenta_contable' in item && remoteData.cuenta_contable !== item.cuenta_contable)
+  );
+}
+
+async function persistCatalogoToRemoteIfNeeded(catalogo: CatalogoKey): Promise<void> {
+  const table = getCatalogoTable(catalogo);
+  const [localItems, remoteSnapshot] = await Promise.all([
+    table.toArray(),
+    getDocs(collection(firestoreDb, catalogo)),
+  ]);
+  const remoteItems = new Map(
+    remoteSnapshot.docs.map((documentSnapshot) => [
+      documentSnapshot.id,
+      documentSnapshot.data() as RemoteCatalogoData,
+    ]),
+  );
+  const itemsToPersist = localItems.filter((item) =>
+    shouldPersistCatalogItem(item, remoteItems.get(item.id)),
+  );
+
+  if (itemsToPersist.length === 0) {
+    return;
+  }
+
+  const batch = writeBatch(firestoreDb);
+  const timestamp = nowIso();
+
+  itemsToPersist.forEach((item) => {
+    batch.set(
+      doc(firestoreDb, catalogo, item.id),
+      buildRemoteCatalogItem(item, timestamp),
+      { merge: true },
+    );
+  });
+
+  await batch.commit();
+}
+
+async function persistManagedCatalogsToRemoteIfNeeded(): Promise<void> {
+  if (!navigator.onLine) {
+    return;
+  }
+
+  if (!catalogPersistencePromise) {
+    catalogPersistencePromise = Promise.all(
+      CATALOG_KEYS.map((catalogo) => persistCatalogoToRemoteIfNeeded(catalogo)),
+    ).then(() => undefined)
+      .finally(() => {
+        catalogPersistencePromise = null;
+      });
+  }
+
+  await catalogPersistencePromise;
+}
+
 function normalizeManagedCatalogItem(item: CatalogoTableItem): ManagedCatalogItem {
   return {
     id: item.id,
@@ -406,8 +507,9 @@ async function getCatalogItem(catalogo: CatalogoKey, itemId: string) {
 export async function getManagedCatalogItems(
   catalogo: CatalogoKey,
 ): Promise<ManagedCatalogItem[]> {
-  await refreshCatalogosFromRemote().catch(() => undefined);
+  await refreshCatalogosFromRemote({ includeInactive: true }).catch(() => undefined);
   await seedCatalogosIfNeeded();
+  await persistManagedCatalogsToRemoteIfNeeded();
 
   const table = getCatalogoTable(catalogo);
   const items = await table.toArray();

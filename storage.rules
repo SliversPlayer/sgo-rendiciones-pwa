@@ -1,0 +1,105 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/(default)/documents/usuarios/$(uid);
+    }
+
+    function hasUserProfile() {
+      return signedIn() && firestore.exists(userPath(request.auth.uid));
+    }
+
+    function currentProfile() {
+      return firestore.get(userPath(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return hasUserProfile() && currentProfile().activo == true;
+    }
+
+    function hasRole(role) {
+      return isActiveUser() && currentProfile().rol == role;
+    }
+
+    function isAdmin() {
+      return hasRole('ADMIN') || hasRole('SUPERADMIN');
+    }
+
+    function isAdminVisibleEstado(estado) {
+      return estado in [
+        'ENVIADA',
+        'enviada',
+        'Enviada',
+        'APROBADA',
+        'aprobada',
+        'Aprobada',
+        'RECHAZADA',
+        'rechazada',
+        'Rechazada'
+      ];
+    }
+
+    function rendicionPath(rendicionId) {
+      return /databases/(default)/documents/rendiciones/$(rendicionId);
+    }
+
+    function rendicionExists(rendicionId) {
+      return firestore.exists(rendicionPath(rendicionId));
+    }
+
+    function rendicionData(rendicionId) {
+      return firestore.get(rendicionPath(rendicionId)).data;
+    }
+
+    function isOwnRendicion(rendicionId) {
+      let rendicion = rendicionData(rendicionId);
+
+      return signedIn() && (
+        rendicion.ownerUid == request.auth.uid ||
+        rendicion.usuario_id == request.auth.uid ||
+        rendicion.uid == request.auth.uid
+      );
+    }
+
+    function canReadRendicionAdjunto(rendicionId) {
+      let rendicion = rendicionData(rendicionId);
+
+      return isOwnRendicion(rendicionId) ||
+        (isAdmin() && isAdminVisibleEstado(rendicion.estado));
+    }
+
+    function isAllowedAdjuntoContentType() {
+      return request.resource.contentType.matches('image/.*') ||
+        request.resource.contentType == 'application/pdf';
+    }
+
+    function isAllowedAdjuntoSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+
+    match /adjuntos/{rendicionId}/{gastoId}/{fileName} {
+      allow read: if signedIn() &&
+        rendicionExists(rendicionId) &&
+        canReadRendicionAdjunto(rendicionId);
+
+      allow create, update: if isActiveUser() &&
+        rendicionExists(rendicionId) &&
+        isOwnRendicion(rendicionId) &&
+        isAllowedAdjuntoContentType() &&
+        isAllowedAdjuntoSize();
+
+      allow delete: if isActiveUser() &&
+        rendicionExists(rendicionId) &&
+        isOwnRendicion(rendicionId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

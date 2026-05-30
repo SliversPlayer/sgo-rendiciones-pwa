@@ -1,5 +1,5 @@
 import { FirebaseError } from 'firebase/app';
-import { collection, doc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { adjuntosTable, gastosTable, rendicionesTable } from './db';
@@ -279,6 +279,10 @@ function buildRemoteRendicionPayload(
   return fechaEnvio ? { ...payload, fecha_envio: fechaEnvio } : payload;
 }
 
+function getPreUploadEstado(estado: Rendicion['estado']): Rendicion['estado'] {
+  return estado === 'ENVIADA' ? 'ENVIANDO' : estado;
+}
+
 function buildRemoteGastoPayload(
   gasto: Gasto,
   user: User,
@@ -404,6 +408,20 @@ async function persistRendicionSnapshot(
   const estado = options.estado ?? rendicion.estado;
   const fechaEnvio = options.fechaEnvio ?? rendicion.fecha_envio;
   const uploadedByGasto = new Map<string, UploadedAdjunto[]>();
+  const rendicionRef = doc(firestoreDb, 'rendiciones', rendicion.id);
+
+  await setDoc(
+    rendicionRef,
+    buildRemoteRendicionPayload(
+      rendicion,
+      user,
+      usuarioNombre,
+      gastos,
+      getPreUploadEstado(estado),
+      undefined,
+    ),
+    { merge: true },
+  );
 
   for (const { gasto, adjuntos } of gastos) {
     uploadedByGasto.set(
@@ -417,7 +435,6 @@ async function persistRendicionSnapshot(
   );
   const localGastoIds = new Set(gastos.map(({ gasto }) => gasto.id));
   const batch = writeBatch(firestoreDb);
-  const rendicionRef = doc(firestoreDb, 'rendiciones', rendicion.id);
   const userEmail = user.email ?? rendicion.usuario_email ?? '';
 
   batch.set(

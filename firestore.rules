@@ -1,0 +1,394 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/usuarios/$(uid);
+    }
+
+    function hasUserProfile() {
+      return signedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function currentProfile() {
+      return get(userPath(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return hasUserProfile() && currentProfile().activo == true;
+    }
+
+    function hasRole(role) {
+      return isActiveUser() && currentProfile().rol == role;
+    }
+
+    function isAdmin() {
+      return hasRole('ADMIN') || hasRole('SUPERADMIN');
+    }
+
+    function isSuperAdmin() {
+      return hasRole('SUPERADMIN');
+    }
+
+    function isAdminVisibleEstado(estado) {
+      return estado in [
+        'ENVIADA',
+        'enviada',
+        'Enviada',
+        'APROBADA',
+        'aprobada',
+        'Aprobada',
+        'RECHAZADA',
+        'rechazada',
+        'Rechazada'
+      ];
+    }
+
+    function isOwnRendicion(data) {
+      return signedIn() && (
+        data.ownerUid == request.auth.uid ||
+        data.usuario_id == request.auth.uid ||
+        data.uid == request.auth.uid
+      );
+    }
+
+    function hasNormalizedOwner(data) {
+      return data.ownerUid == request.auth.uid &&
+        data.usuario_id == request.auth.uid &&
+        data.uid == request.auth.uid;
+    }
+
+    function canReadRendicionData(data) {
+      return isOwnRendicion(data) ||
+        (isAdmin() && isAdminVisibleEstado(data.estado));
+    }
+
+    function rendicionPath(rendicionId) {
+      return /databases/$(database)/documents/rendiciones/$(rendicionId);
+    }
+
+    function rendicionExists(rendicionId) {
+      return exists(rendicionPath(rendicionId));
+    }
+
+    function rendicionExistsAfter(rendicionId) {
+      return existsAfter(rendicionPath(rendicionId));
+    }
+
+    function rendicionData(rendicionId) {
+      return get(rendicionPath(rendicionId)).data;
+    }
+
+    function rendicionAfterData(rendicionId) {
+      return getAfter(rendicionPath(rendicionId)).data;
+    }
+
+    function userRendicionWriteFields() {
+      return [
+        'id',
+        'uid',
+        'usuario_id',
+        'ownerUid',
+        'usuario_email',
+        'ownerEmail',
+        'usuario_nombre',
+        'titulo',
+        'glosa',
+        'glosa_grupo',
+        'tipo_rendicion_id',
+        'tipo_rendicion_nombre',
+        'tipo_rendicion_cuenta_contable',
+        'estado',
+        'sync_status',
+        'fecha_creacion',
+        'fecha_actualizacion',
+        'fecha_envio',
+        'total_gastos',
+        'monto_total',
+        'last_synced_at',
+        'createdAt',
+        'updatedAt',
+        'lastSyncedAt',
+        'created_at_remote',
+        'updated_at_remote'
+      ];
+    }
+
+    function validUserCreateEstado(estado) {
+      return estado in ['BORRADOR', 'ENVIANDO', 'ENVIADA'];
+    }
+
+    function validUserEstadoTransition(before, after) {
+      return after in ['BORRADOR', 'ENVIANDO', 'ENVIADA', 'RECHAZADA', 'ERROR'] &&
+        (
+          before == after ||
+          (
+            before in ['BORRADOR', 'PENDIENTE_ENVIO', 'ENVIANDO', 'RECHAZADA', 'ERROR'] &&
+            after in ['ENVIANDO', 'ENVIADA']
+          )
+        );
+    }
+
+    function validOwnerRendicionCreate(rendicionId) {
+      return isActiveUser() &&
+        request.resource.data.keys().hasAll(['id', 'uid', 'usuario_id', 'ownerUid', 'estado']) &&
+        request.resource.data.keys().hasOnly(userRendicionWriteFields()) &&
+        hasNormalizedOwner(request.resource.data) &&
+        request.resource.data.id == rendicionId &&
+        validUserCreateEstado(request.resource.data.estado);
+    }
+
+    function validOwnerRendicionUpdate(rendicionId) {
+      return isActiveUser() &&
+        isOwnRendicion(resource.data) &&
+        hasNormalizedOwner(request.resource.data) &&
+        request.resource.data.id == rendicionId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(userRendicionWriteFields()) &&
+        validUserEstadoTransition(resource.data.estado, request.resource.data.estado);
+    }
+
+    function validOwnerRendicionDelete() {
+      return isActiveUser() &&
+        isOwnRendicion(resource.data) &&
+        resource.data.estado in ['BORRADOR', 'RECHAZADA', 'ERROR'];
+    }
+
+    function validAdminApprovalUpdate() {
+      return isAdmin() &&
+        resource.data.estado in ['ENVIADA', 'enviada', 'Enviada'] &&
+        request.resource.data.estado == 'APROBADA' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'estado',
+          'sync_status',
+          'fecha_aprobacion',
+          'usuario_aprobacion',
+          'updated_at_remote'
+        ]) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAll([
+          'estado',
+          'fecha_aprobacion',
+          'usuario_aprobacion'
+        ]) &&
+        request.resource.data.sync_status == 'SYNCED';
+    }
+
+    function validAdminRejectionUpdate() {
+      return isAdmin() &&
+        resource.data.estado in ['ENVIADA', 'enviada', 'Enviada'] &&
+        request.resource.data.estado == 'RECHAZADA' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'estado',
+          'sync_status',
+          'fecha_rechazo',
+          'usuario_rechazo',
+          'observacion_rechazo',
+          'updated_at_remote'
+        ]) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAll([
+          'estado',
+          'fecha_rechazo',
+          'usuario_rechazo',
+          'observacion_rechazo'
+        ]) &&
+        request.resource.data.sync_status == 'SYNCED' &&
+        request.resource.data.observacion_rechazo is string &&
+        request.resource.data.observacion_rechazo.size() > 0;
+    }
+
+    function gastoWriteFields() {
+      return [
+        'id',
+        'rendicion_id',
+        'uid',
+        'usuario_id',
+        'ownerUid',
+        'usuario_email',
+        'ownerEmail',
+        'fecha',
+        'glosa',
+        'centro_negocio_id',
+        'centro_negocio_nombre',
+        'centro_negocio_codigo',
+        'centro_costo_id',
+        'centro_costo_nombre',
+        'centro_costo_codigo',
+        'tipo_documento_id',
+        'tipo_documento_nombre',
+        'tipo_documento_codigo',
+        'tipo_documento_cuenta_contable',
+        'numero_documento',
+        'tipo_gasto_id',
+        'tipo_gasto_nombre',
+        'tipo_gasto_codigo',
+        'tipo_gasto_cuenta_contable',
+        'monto',
+        'fecha_creacion',
+        'fecha_actualizacion',
+        'adjuntos',
+        'updated_at_remote'
+      ];
+    }
+
+    function hasNormalizedGastoOwner(data) {
+      return data.ownerUid == request.auth.uid &&
+        data.usuario_id == request.auth.uid &&
+        data.uid == request.auth.uid;
+    }
+
+    function validGastoPayload(rendicionId, gastoId) {
+      return request.resource.data.keys().hasAll(['id', 'rendicion_id', 'uid', 'usuario_id', 'ownerUid']) &&
+        request.resource.data.keys().hasOnly(gastoWriteFields()) &&
+        request.resource.data.id == gastoId &&
+        request.resource.data.rendicion_id == rendicionId &&
+        hasNormalizedGastoOwner(request.resource.data);
+    }
+
+    function ownerCanWriteGastos(rendicionId) {
+      let after = rendicionAfterData(rendicionId);
+      let before = rendicionExists(rendicionId) ? rendicionData(rendicionId) : after;
+
+      return isActiveUser() &&
+        rendicionExistsAfter(rendicionId) &&
+        isOwnRendicion(after) &&
+        (
+          after.estado in ['BORRADOR', 'ENVIANDO', 'RECHAZADA', 'ERROR'] ||
+          (
+            after.estado == 'ENVIADA' &&
+            before.estado in ['BORRADOR', 'PENDIENTE_ENVIO', 'ENVIANDO', 'RECHAZADA', 'ERROR']
+          )
+        );
+    }
+
+    function ownerCanDeleteGastos(rendicionId) {
+      return isActiveUser() &&
+        rendicionExists(rendicionId) &&
+        isOwnRendicion(rendicionData(rendicionId)) &&
+        rendicionData(rendicionId).estado in ['BORRADOR', 'RECHAZADA', 'ERROR'];
+    }
+
+    function userSelfUpdateFields() {
+      return ['mustChangePassword', 'passwordChangedAt', 'updatedAt'];
+    }
+
+    function validSelfUserUpdate(uid) {
+      return signedIn() &&
+        request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(userSelfUpdateFields()) &&
+        request.resource.data.rol == resource.data.rol &&
+        request.resource.data.activo == resource.data.activo &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.mustChangePassword == false &&
+        resource.data.mustChangePassword == true;
+    }
+
+    function validSuperAdminUserWrite(uid) {
+      return isSuperAdmin() &&
+        request.resource.data.keys().hasOnly([
+          'uid',
+          'nombre',
+          'email',
+          'rut',
+          'rol',
+          'activo',
+          'mustChangePassword',
+          'passwordChangedAt',
+          'createdAt',
+          'updatedAt',
+          'created_at'
+        ]) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.rol in ['USER', 'ADMIN', 'SUPERADMIN'] &&
+        request.resource.data.activo is bool;
+    }
+
+    function validSuperAdminUserUpdate() {
+      return isSuperAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nombre',
+          'rut',
+          'rol',
+          'activo',
+          'mustChangePassword',
+          'passwordChangedAt',
+          'updatedAt'
+        ]) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.rol in ['USER', 'ADMIN', 'SUPERADMIN'] &&
+        request.resource.data.activo is bool;
+    }
+
+    function isCatalogCollection(collectionName) {
+      return collectionName in [
+        'centros_negocio',
+        'tipos_documento',
+        'tipos_gasto',
+        'tipos_rendicion'
+      ];
+    }
+
+    function validCatalogWrite(itemId, requireId) {
+      return isSuperAdmin() &&
+        request.resource.data.keys().hasOnly([
+          'id',
+          'nombre',
+          'codigo',
+          'activo',
+          'cuenta_contable',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        (
+          (requireId && request.resource.data.id == itemId) ||
+          (!requireId && (!('id' in request.resource.data) || request.resource.data.id == itemId))
+        ) &&
+        request.resource.data.activo is bool;
+    }
+
+    match /usuarios/{uid} {
+      allow get: if (signedIn() && request.auth.uid == uid) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if validSuperAdminUserWrite(uid);
+      allow update: if validSelfUserUpdate(uid) || validSuperAdminUserUpdate();
+      allow delete: if false;
+    }
+
+    match /rendiciones/{rendicionId} {
+      allow get, list: if signedIn() && canReadRendicionData(resource.data);
+      allow create: if validOwnerRendicionCreate(rendicionId);
+      allow update: if validOwnerRendicionUpdate(rendicionId) ||
+        validAdminApprovalUpdate() ||
+        validAdminRejectionUpdate();
+      allow delete: if validOwnerRendicionDelete();
+
+      match /gastos/{gastoId} {
+        allow get, list: if signedIn() &&
+          rendicionExists(rendicionId) &&
+          canReadRendicionData(rendicionData(rendicionId));
+        allow create, update: if ownerCanWriteGastos(rendicionId) &&
+          validGastoPayload(rendicionId, gastoId);
+        allow delete: if ownerCanDeleteGastos(rendicionId);
+      }
+    }
+
+    match /{catalogo}/{itemId} {
+      allow get, list: if isCatalogCollection(catalogo) &&
+        (
+          isSuperAdmin() ||
+          (signedIn() && resource.data.activo == true)
+        );
+      allow create: if isCatalogCollection(catalogo) && validCatalogWrite(itemId, true);
+      allow update: if isCatalogCollection(catalogo) && validCatalogWrite(itemId, false);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

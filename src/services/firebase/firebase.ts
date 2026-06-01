@@ -3,15 +3,30 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+function readEnvValue(value: string | undefined): string | undefined {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    return undefined;
+  }
+
+  return trimmedValue.replace(/^"|"$/g, '');
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: readEnvValue(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: readEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: readEnvValue(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: readEnvValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: readEnvValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: readEnvValue(import.meta.env.VITE_FIREBASE_APP_ID),
 };
 
+export const missingFirebaseConfigKeys = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+export const hasFirebaseConfig = missingFirebaseConfigKeys.length === 0;
 export { firebaseConfig };
 
 export const firebaseApp = initializeApp(firebaseConfig);

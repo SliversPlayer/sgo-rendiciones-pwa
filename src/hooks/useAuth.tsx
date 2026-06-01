@@ -16,7 +16,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { firebaseAuth, firestoreDb } from '../services/firebase/firebase';
+import {
+  firebaseAuth,
+  firestoreDb,
+  hasFirebaseConfig,
+  missingFirebaseConfigKeys,
+} from '../services/firebase/firebase';
 import type { UserProfile } from '../types/user';
 import { nowIso } from '../utils/date';
 import { normalizeUserRole } from '../utils/roles';
@@ -34,6 +39,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const PROFILE_CACHE_KEY_PREFIX = 'sgo:user-profile:';
+const FIREBASE_CONFIG_ERROR =
+  'Falta configuracion Firebase en el despliegue. Revisa variables VITE_FIREBASE_* en Vercel.';
 
 function getDefaultName(email: string): string {
   return email.split('@')[0] || email;
@@ -183,12 +190,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
 
+    if (!hasFirebaseConfig) {
+      setCurrentUser(null);
+      setUserProfile(null);
+      setAuthError(`${FIREBASE_CONFIG_ERROR} Faltantes: ${missingFirebaseConfigKeys.join(', ')}.`);
+      setLoading(false);
+      return undefined;
+    }
+
     const clearProfileSubscription = () => {
       unsubscribeProfile?.();
       unsubscribeProfile = null;
     };
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+    let unsubscribe: () => void;
+
+    try {
+      unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       clearProfileSubscription();
       setLoading(true);
 
@@ -276,7 +294,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         setLoading(false);
       }
-    });
+      });
+    } catch (error) {
+      setCurrentUser(null);
+      setUserProfile(null);
+      setAuthError(error instanceof Error ? error.message : 'No se pudo inicializar Firebase Auth.');
+      setLoading(false);
+
+      return () => {
+        clearProfileSubscription();
+      };
+    }
 
     return () => {
       clearProfileSubscription();
@@ -285,6 +313,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    if (!hasFirebaseConfig) {
+      setAuthError(FIREBASE_CONFIG_ERROR);
+      throw new Error(FIREBASE_CONFIG_ERROR);
+    }
+
     try {
       setAuthError(null);
       await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
@@ -303,6 +336,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requestPasswordReset = useCallback(async (email: string) => {
+    if (!hasFirebaseConfig) {
+      throw new Error(FIREBASE_CONFIG_ERROR);
+    }
+
     try {
       setAuthError(null);
       await sendPasswordResetEmail(firebaseAuth, email.trim().toLowerCase());

@@ -175,7 +175,7 @@ export function CatalogManagementPanel() {
           <p className="eyebrow">Catalogos</p>
           <h2 id="superadmin-catalogs-title">Gestion de catalogos</h2>
         </div>
-        <button type="button" className="button button-secondary" onClick={() => void reload()}>
+        <button type="button" className="button button-secondary" onClick={() => void reload(true)}>
           Refrescar
         </button>
       </div>

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ensureCatalogosLoaded,
+  getCatalogosLoadWarning,
   getGastoCatalogos,
   getTiposRendicion,
-  seedCatalogosIfNeeded,
 } from '../services/catalogos';
 import type { GastoCatalogos, TipoRendicion } from '../types/catalogo';
 
@@ -18,30 +19,43 @@ function getCatalogosErrorMessage(error: unknown): string {
     : 'No se pudieron cargar los catalogos locales.';
 }
 
-export function useCatalogosBootstrap() {
-  const [isLoading, setIsLoading] = useState(true);
+export function useCatalogosBootstrap(options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     try {
       setIsLoading(true);
       setError(null);
-      await seedCatalogosIfNeeded();
+      setWarning(null);
+      await ensureCatalogosLoaded({ force });
+      setWarning(getCatalogosLoadWarning());
     } catch (loadError) {
       setError(getCatalogosErrorMessage(loadError));
     } finally {
+      setHasLoaded(true);
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      setHasLoaded(false);
+      return;
+    }
+
     void load();
-  }, [load]);
+  }, [enabled, load]);
 
   return {
-    isLoading,
+    isLoading: enabled && !hasLoaded ? true : isLoading,
     error,
-    reload: load,
+    warning,
+    reload: () => load(true),
   };
 }
 

@@ -526,6 +526,32 @@ service cloud.firestore {
         request.resource.data.activo is bool;
     }
 
+    function validCatalogMetaFields(catalogoId) {
+      return isCatalogCollection(catalogoId) &&
+        request.resource.data.keys().hasOnly([
+          'version',
+          'updatedAt',
+          'updatedBy'
+        ]) &&
+        request.resource.data.version is number &&
+        request.resource.data.version >= 1 &&
+        request.resource.data.updatedAt is timestamp &&
+        validOptionalString(request.resource.data.get('updatedBy', null));
+    }
+
+    function validCatalogMetaCreate(catalogoId) {
+      return isActiveUser() &&
+        validCatalogMetaFields(catalogoId) &&
+        request.resource.data.version == 1 &&
+        request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    function validCatalogMetaUpdate(catalogoId) {
+      return isSuperAdmin() &&
+        validCatalogMetaFields(catalogoId) &&
+        request.resource.data.version >= resource.data.version;
+    }
+
     match /usuarios/{uid} {
       allow get: if (signedIn() && request.auth.uid == uid) || isSuperAdmin();
       allow list: if isSuperAdmin();
@@ -560,6 +586,13 @@ service cloud.firestore {
         );
       allow create: if isCatalogCollection(catalogo) && validCatalogWrite(itemId, true);
       allow update: if isCatalogCollection(catalogo) && validCatalogWrite(itemId, false);
+      allow delete: if false;
+    }
+
+    match /catalogos_meta/{catalogoId} {
+      allow get, list: if signedIn() && isCatalogCollection(catalogoId);
+      allow create: if validCatalogMetaCreate(catalogoId);
+      allow update: if validCatalogMetaUpdate(catalogoId);
       allow delete: if false;
     }
 

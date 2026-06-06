@@ -6,6 +6,7 @@ import type {
   TipoDocumento,
   TipoGasto,
   TipoRendicion,
+  CatalogoLocalMeta,
 } from '../types/catalogo';
 
 class SgoRendicionesDatabase extends Dexie {
@@ -16,6 +17,7 @@ class SgoRendicionesDatabase extends Dexie {
   tipos_documento!: Table<TipoDocumento, string>;
   tipos_rendicion!: Table<TipoRendicion, string>;
   tipos_gasto!: Table<TipoGasto, string>;
+  catalog_meta!: Table<CatalogoLocalMeta, string>;
 
   constructor() {
     super('sgo-rendiciones-db');
@@ -222,6 +224,19 @@ class SgoRendicionesDatabase extends Dexie {
           }
         });
       });
+
+    this.version(9).stores({
+      rendiciones:
+        'id, usuario_id, uid, estado, sync_status, tipo_rendicion_id, fecha_creacion, fecha_actualizacion, fecha_envio, last_synced_at',
+      gastos:
+        'id, rendicion_id, usuario_id, uid, sync_status, local_id, remote_id, fecha, centro_negocio_id, tipo_documento_id, tipo_gasto_id',
+      adjuntos: 'id, gasto_id, storagePath',
+      centros_negocio: 'id, codigo, activo, nombre',
+      tipos_documento: 'id, codigo, cuenta_contable, activo, nombre',
+      tipos_rendicion: 'id, cuenta_contable, activo, nombre',
+      tipos_gasto: 'id, cuenta_contable, activo, nombre',
+      catalog_meta: 'catalogoId, version, updatedAt, lastFetchedAt, includeInactive',
+    });
   }
 }
 
@@ -234,3 +249,4 @@ export const centrosNegocioTable = db.centros_negocio;
 export const tiposDocumentoTable = db.tipos_documento;
 export const tiposRendicionTable = db.tipos_rendicion;
 export const tiposGastoTable = db.tipos_gasto;
+export const catalogMetaTable = db.catalog_meta;

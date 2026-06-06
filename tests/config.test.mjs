@@ -84,4 +84,15 @@ describe('project configuration', () => {
     assert.match(viteConfig, /firebase/);
     assert.match(viteConfig, /vendor/);
   });
+
+  it('uses Firestore and Dexie as the only catalog sources', async () => {
+    const catalogosService = await readFile('src/services/catalogos.ts', 'utf8');
+
+    assert.match(catalogosService, /catalogos_meta/);
+    assert.match(catalogosService, /catalogMetaTable/);
+    assert.doesNotMatch(catalogosService, /docs\/catalogos/);
+    assert.doesNotMatch(catalogosService, /\.csv\?raw/);
+    assert.doesNotMatch(catalogosService, /parseCsv/);
+    assert.doesNotMatch(catalogosService, /seedCatalogos/);
+  });
 });

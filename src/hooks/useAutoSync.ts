@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { refreshCatalogosFromRemote } from '../services/catalogos';
 import { refreshUserRendicionesFromRemote } from '../services/rendicionesService';
 import { syncPendingUserData } from '../services/syncService';
 import { useAuth } from './useAuth';
@@ -20,7 +19,6 @@ export function useAutoSync() {
         return;
       }
 
-      await refreshCatalogosFromRemote().catch(() => undefined);
       await syncPendingUserData(currentUser, usuarioNombre).catch(() => undefined);
 
       if (isActive) {

@@ -1,10 +1,7 @@
+import type { CatalogoId } from './catalogo';
 import type { UserRole } from './user';
 
-export type CatalogoKey =
-  | 'centros_negocio'
-  | 'tipos_documento'
-  | 'tipos_gasto'
-  | 'tipos_rendicion';
+export type CatalogoKey = CatalogoId;
 
 export interface ManagedUser {
   uid: string;

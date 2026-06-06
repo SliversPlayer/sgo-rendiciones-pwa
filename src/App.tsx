@@ -22,6 +22,9 @@ function LoadingShell({ message }: { message: string }) {
 
 function ProtectedLayout() {
   const { currentUser, loading, userProfile } = useAuth();
+  const catalogos = useCatalogosBootstrap({
+    enabled: Boolean(currentUser && !userProfile?.mustChangePassword && userProfile?.activo !== false),
+  });
   useAutoSync();
 
   if (loading) {
@@ -36,7 +39,31 @@ function ProtectedLayout() {
     return <PasswordChangeGate />;
   }
 
-  return <Outlet />;
+  if (catalogos.isLoading) {
+    return <LoadingShell message="Preparando catalogos locales..." />;
+  }
+
+  if (catalogos.error) {
+    return (
+      <main className="app-shell">
+        <p className="notice notice-error">{catalogos.error}</p>
+        <button type="button" className="button button-primary" onClick={() => void catalogos.reload()}>
+          Reintentar
+        </button>
+      </main>
+    );
+  }
+
+  return (
+    <>
+      {catalogos.warning ? (
+        <div className="app-shell">
+          <p className="notice">{catalogos.warning}</p>
+        </div>
+      ) : null}
+      <Outlet />
+    </>
+  );
 }
 
 function PublicLoginRoute() {
@@ -97,23 +124,6 @@ function LegacyEditarGastoRedirect() {
 }
 
 export function App() {
-  const catalogos = useCatalogosBootstrap();
-
-  if (catalogos.isLoading) {
-    return <LoadingShell message="Preparando catalogos locales..." />;
-  }
-
-  if (catalogos.error) {
-    return (
-      <main className="app-shell">
-        <p className="notice notice-error">{catalogos.error}</p>
-        <button type="button" className="button button-primary" onClick={() => void catalogos.reload()}>
-          Reintentar
-        </button>
-      </main>
-    );
-  }
-
   return (
     <Routes>
       <Route path="/login" element={<PublicLoginRoute />} />

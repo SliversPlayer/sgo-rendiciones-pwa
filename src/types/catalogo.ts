@@ -1,3 +1,9 @@
+export type CatalogoId =
+  | 'centros_negocio'
+  | 'tipos_documento'
+  | 'tipos_gasto'
+  | 'tipos_rendicion';
+
 export interface CatalogoBase {
   id: string;
   nombre: string;
@@ -30,4 +36,12 @@ export interface GastoCatalogos {
   centrosNegocio: CentroNegocio[];
   tiposDocumento: TipoDocumento[];
   tiposGasto: TipoGasto[];
+}
+
+export interface CatalogoLocalMeta {
+  catalogoId: CatalogoId;
+  version: number;
+  updatedAt?: string;
+  lastFetchedAt: string;
+  includeInactive?: boolean;
 }

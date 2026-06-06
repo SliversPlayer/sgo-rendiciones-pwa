@@ -21,11 +21,11 @@ export function useSuperAdminCatalogos(catalogo: CatalogoKey) {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (force = false) => {
     try {
       setIsLoading(true);
       setError(null);
-      setItems(await getManagedCatalogItems(catalogo));
+      setItems(await getManagedCatalogItems(catalogo, { force }));
     } catch (loadError) {
       setError(getErrorMessage(loadError));
     } finally {
@@ -44,7 +44,7 @@ export function useSuperAdminCatalogos(catalogo: CatalogoKey) {
       setSuccessMessage(null);
       await saveManagedCatalogItem(catalogo, input, itemId);
       setSuccessMessage(itemId ? 'Catalogo actualizado correctamente.' : 'Catalogo creado correctamente.');
-      await reload();
+      await reload(false);
     } catch (saveError) {
       setError(getErrorMessage(saveError));
       throw saveError;
@@ -60,7 +60,7 @@ export function useSuperAdminCatalogos(catalogo: CatalogoKey) {
       setSuccessMessage(null);
       await updateManagedCatalogItemActive(catalogo, itemId, activo);
       setSuccessMessage(activo ? 'Catalogo activado correctamente.' : 'Catalogo desactivado correctamente.');
-      await reload();
+      await reload(false);
     } catch (saveError) {
       setError(getErrorMessage(saveError));
       throw saveError;

@@ -4,7 +4,7 @@ Aplicacion web progresiva para gestionar rendiciones de gastos con enfoque offli
 
 ## Estado Actual Del Proyecto
 
-El proyecto se encuentra avanzado hasta Sprint 4. La base local offline-first de Sprint 1 sigue vigente, pero ahora incluye autenticacion con Firebase, gastos con adjuntos, sincronizacion manual por rendicion, catalogos estructurados desde CSV, rutas con React Router y mejoras responsive para uso movil.
+El proyecto se encuentra avanzado hasta Sprint 4. La base local offline-first de Sprint 1 sigue vigente, pero ahora incluye autenticacion con Firebase, gastos con adjuntos, sincronizacion manual por rendicion, catalogos versionados desde Firestore con cache Dexie, rutas con React Router y mejoras responsive para uso movil.
 
 La aplicacion esta pensada para uso en terreno: los datos se crean primero en IndexedDB mediante Dexie y luego se sincronizan a Firestore/Storage solo cuando el usuario envia una rendicion especifica.
 
@@ -75,14 +75,14 @@ Los gastos solo pueden crearse, editarse o eliminarse si la rendicion sigue edit
 
 ### Catalogos
 
-La app usa catalogos estructurados cargados desde `docs/catalogos/`:
+Firestore es la fuente de verdad de catalogos. La app usa las colecciones:
 
-- `centros_negocio.csv`
-- `tipos_documento.csv`
-- `tipos_rendicion.csv`
-- `tipos_gasto.csv`
+- `centros_negocio`
+- `tipos_documento`
+- `tipos_rendicion`
+- `tipos_gasto`
 
-Los catalogos se cargan automaticamente al iniciar la aplicacion y se almacenan localmente en Dexie si las tablas estan vacias. No se duplican seeds ni se eliminan datos existentes.
+Cada catalogo tiene metadata independiente en `catalogos_meta/{catalogoId}` con version, fecha de actualizacion y usuario que actualizo cuando corresponde. Al iniciar sesion, la app valida versiones una vez por sesion, descarga solo catalogos nuevos o modificados y conserva los datos en Dexie para uso local.
 
 Los formularios usan selects/radio cards estrictos. Al seleccionar catalogos se guarda un snapshot completo para preservar la historia de la rendicion aunque el catalogo cambie despues.
 
@@ -234,7 +234,6 @@ Estas variables deben definirse en `.env` local o en el entorno de despliegue. E
 
 ```text
 docs/
-  catalogos/              CSV usados para seed local de catalogos
   decisions*.md           decisiones de arquitectura y producto
   dev-rules.md            reglas de desarrollo
   firebase-security-notes.md

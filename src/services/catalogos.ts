@@ -1,18 +1,26 @@
-import centrosNegocioCsv from '../../docs/catalogos/centros_negocio.csv?raw';
-import tiposDocumentoCsv from '../../docs/catalogos/tipos_documento.csv?raw';
-import tiposGastoCsv from '../../docs/catalogos/tipos_gasto.csv?raw';
-import tiposRendicionCsv from '../../docs/catalogos/tipos_rendicion.csv?raw';
 import type { Table } from 'dexie';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from 'firebase/firestore';
 import type {
-  CentroNegocio,
   CatalogoBase,
+  CatalogoId,
+  CatalogoLocalMeta,
+  CentroNegocio,
   GastoCatalogos,
   TipoDocumento,
   TipoGasto,
   TipoRendicion,
 } from '../types/catalogo';
 import {
+  catalogMetaTable,
   centrosNegocioTable,
   db,
   tiposDocumentoTable,
@@ -20,22 +28,52 @@ import {
   tiposRendicionTable,
 } from './db';
 import { firebaseAuth, firestoreDb } from './firebase/firebase';
+import { nowIso } from '../utils/date';
 
-type CsvRow = Record<string, string>;
-type CatalogoSource = 'CSV seed -> Dexie';
-interface RefreshCatalogosOptions {
+export type CatalogoKey = CatalogoId;
+export type CatalogoTableItem = CentroNegocio | TipoDocumento | TipoGasto | TipoRendicion;
+export type CatalogoTable = Table<CatalogoTableItem, string>;
+
+interface EnsureCatalogosOptions {
+  catalogos?: CatalogoKey[];
   includeInactive?: boolean;
+  force?: boolean;
 }
-type CatalogoTable<T extends CatalogoBase> = Table<T, string>;
-type RemoteCatalogoData = Partial<CatalogoBase> & {
-  cuenta_contable?: string;
-  created_at?: string;
-  updated_at?: string;
-};
 
-let seedPromise: Promise<void> | null = null;
-const CATALOG_SOURCE: CatalogoSource = 'CSV seed -> Dexie';
-const remoteCatalogosWithDocuments = new Set<string>();
+interface RemoteCatalogoData {
+  [key: string]: unknown;
+  nombre?: unknown;
+  codigo?: unknown;
+  cuenta_contable?: unknown;
+  activo?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  created_at?: unknown;
+  updated_at?: unknown;
+}
+
+interface RemoteCatalogoMeta {
+  version: number;
+  updatedAt?: string;
+}
+
+interface CatalogSessionState {
+  version: number;
+  includeInactive: boolean;
+}
+
+export const CATALOG_KEYS: CatalogoKey[] = [
+  'centros_negocio',
+  'tipos_documento',
+  'tipos_gasto',
+  'tipos_rendicion',
+];
+
+const catalogItemsCache = new Map<CatalogoKey, CatalogoTableItem[]>();
+const catalogLoadPromises = new Map<string, Promise<void>>();
+const sessionCatalogs = new Map<CatalogoKey, CatalogSessionState>();
+let catalogBootstrapCompleted = false;
+let lastCatalogosWarning: string | null = null;
 
 function logCatalogosDiagnostic(
   message: string,
@@ -55,66 +93,13 @@ function warnCatalogosDiagnostic(
   }
 }
 
-function parseCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let current = '';
-  let insideQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const nextChar = line[index + 1];
-
-    if (char === '"' && nextChar === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      insideQuotes = !insideQuotes;
-      continue;
-    }
-
-    if (char === ',' && !insideQuotes) {
-      values.push(current.trim());
-      current = '';
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
-}
-
-function parseCsv(content: string): CsvRow[] {
-  const [headerLine, ...rows] = content.trim().split(/\r?\n/);
-  const headers = parseCsvLine(headerLine).map((header) => header.replace(/^\uFEFF/, ''));
-
-  return rows
-    .filter((row) => row.trim().length > 0)
-    .map((row) => {
-      const values = parseCsvLine(row);
-
-      return headers.reduce<CsvRow>((record, header, index) => {
-        record[header] = values[index] ?? '';
-        return record;
-      }, {});
-    });
-}
-
-function parseActivo(value: string): boolean {
-  return ['TRUE', '1', 'SI', 'S', 'ACTIVO'].includes(value.trim().toUpperCase());
-}
-
 function isActivo(value: unknown): boolean {
   if (typeof value === 'boolean') {
     return value;
   }
 
   if (typeof value === 'string') {
-    return parseActivo(value);
+    return ['TRUE', '1', 'SI', 'S', 'ACTIVO'].includes(value.trim().toUpperCase());
   }
 
   return false;
@@ -128,53 +113,31 @@ function getRemoteString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+function toIsoString(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) {
+    return value;
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toDate' in value &&
+    typeof value.toDate === 'function'
+  ) {
+    return value.toDate().toISOString();
+  }
+
+  return undefined;
+}
+
 function normalizeRemoteTimestamps(data: RemoteCatalogoData) {
-  const createdAt = getRemoteString(data.createdAt ?? data.created_at);
-  const updatedAt = getRemoteString(data.updatedAt ?? data.updated_at, createdAt);
+  const createdAt = toIsoString(data.createdAt ?? data.created_at);
+  const updatedAt = toIsoString(data.updatedAt ?? data.updated_at) ?? createdAt;
 
   return {
-    createdAt: createdAt || undefined,
-    updatedAt: updatedAt || undefined,
+    createdAt,
+    updatedAt,
   };
-}
-
-function parseCentrosNegocio(): CentroNegocio[] {
-  return parseCsv(centrosNegocioCsv).map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    codigo: row.codigo,
-    activo: parseActivo(row.activo),
-  }));
-}
-
-function parseTiposDocumento(): TipoDocumento[] {
-  return parseCsv(tiposDocumentoCsv).map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    codigo: row.codigo,
-    cuenta_contable: row.cuenta_contable,
-    activo: parseActivo(row.activo),
-  }));
-}
-
-function parseTiposRendicion(): TipoRendicion[] {
-  return parseCsv(tiposRendicionCsv).map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    codigo: row.id,
-    cuenta_contable: row.cuenta_contable,
-    activo: parseActivo(row.activo),
-  }));
-}
-
-function parseTiposGasto(): TipoGasto[] {
-  return parseCsv(tiposGastoCsv).map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    codigo: row.id,
-    cuenta_contable: row.cuenta_contable,
-    activo: parseActivo(row.activo),
-  }));
 }
 
 function normalizeRemoteCentroNegocio(id: string, data: RemoteCatalogoData): CentroNegocio {
@@ -220,257 +183,458 @@ function normalizeRemoteTipoGasto(id: string, data: RemoteCatalogoData): TipoGas
   };
 }
 
-async function refreshRemoteTable<T extends CatalogoBase>(
-  collectionName: string,
-  table: CatalogoTable<T>,
-  normalizer: (id: string, data: RemoteCatalogoData) => T,
+function normalizeRemoteCatalogoItem(
+  catalogo: CatalogoKey,
+  id: string,
+  data: RemoteCatalogoData,
+): CatalogoTableItem {
+  if (catalogo === 'centros_negocio') {
+    return normalizeRemoteCentroNegocio(id, data);
+  }
+
+  if (catalogo === 'tipos_documento') {
+    return normalizeRemoteTipoDocumento(id, data);
+  }
+
+  if (catalogo === 'tipos_gasto') {
+    return normalizeRemoteTipoGasto(id, data);
+  }
+
+  return normalizeRemoteTipoRendicion(id, data);
+}
+
+export function getCatalogoLocalTable(catalogo: CatalogoKey): CatalogoTable {
+  if (catalogo === 'centros_negocio') {
+    return centrosNegocioTable as unknown as CatalogoTable;
+  }
+
+  if (catalogo === 'tipos_documento') {
+    return tiposDocumentoTable as unknown as CatalogoTable;
+  }
+
+  if (catalogo === 'tipos_gasto') {
+    return tiposGastoTable as unknown as CatalogoTable;
+  }
+
+  return tiposRendicionTable as unknown as CatalogoTable;
+}
+
+function sortCatalogoItems<T extends { nombre: string }>(items: T[]): T[] {
+  return [...items].sort((first, second) => first.nombre.localeCompare(second.nombre, 'es'));
+}
+
+function getRemoteMetaVersion(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function normalizeRemoteCatalogoMeta(data: Record<string, unknown>): RemoteCatalogoMeta {
+  return {
+    version: getRemoteMetaVersion(data.version),
+    updatedAt: toIsoString(data.updatedAt),
+  };
+}
+
+async function createMissingRemoteCatalogoMeta(
+  catalogo: CatalogoKey,
+): Promise<RemoteCatalogoMeta | null> {
+  const currentUser = firebaseAuth.currentUser;
+
+  if (!currentUser) {
+    return null;
+  }
+
+  try {
+    await setDoc(doc(firestoreDb, 'catalogos_meta', catalogo), {
+      version: 1,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.uid,
+    });
+
+    return {
+      version: 1,
+      updatedAt: nowIso(),
+    };
+  } catch (error) {
+    const snapshot = await getDoc(doc(firestoreDb, 'catalogos_meta', catalogo)).catch(
+      () => null,
+    );
+
+    if (snapshot?.exists()) {
+      return normalizeRemoteCatalogoMeta(snapshot.data());
+    }
+
+    warnCatalogosDiagnostic('no se pudo crear metadata remota de catalogo', {
+      catalogo,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+async function getRemoteCatalogoMeta(catalogo: CatalogoKey): Promise<RemoteCatalogoMeta> {
+  const snapshot = await getDoc(doc(firestoreDb, 'catalogos_meta', catalogo));
+
+  if (snapshot.exists()) {
+    return normalizeRemoteCatalogoMeta(snapshot.data());
+  }
+
+  return (await createMissingRemoteCatalogoMeta(catalogo)) ?? {
+    version: 0,
+  };
+}
+
+async function fetchRemoteCatalogoItems(
+  catalogo: CatalogoKey,
   includeInactive: boolean,
-): Promise<void> {
-  const collectionRef = collection(firestoreDb, collectionName);
+): Promise<CatalogoTableItem[]> {
+  const collectionRef = collection(firestoreDb, catalogo);
   const snapshot = await getDocs(
     includeInactive ? collectionRef : query(collectionRef, where('activo', '==', true)),
   );
 
-  if (snapshot.empty) {
-    if (!includeInactive) {
-      const existenceSnapshot = await getDocs(query(collectionRef, limit(1)));
+  return snapshot.docs.map((documentSnapshot) =>
+    normalizeRemoteCatalogoItem(
+      catalogo,
+      documentSnapshot.id,
+      documentSnapshot.data() as RemoteCatalogoData,
+    ),
+  );
+}
 
-      if (!existenceSnapshot.empty) {
-        remoteCatalogosWithDocuments.add(collectionName);
+async function hydrateCatalogoMemory(catalogo: CatalogoKey): Promise<CatalogoTableItem[]> {
+  const items = await getCatalogoLocalTable(catalogo).toArray();
+  catalogItemsCache.set(catalogo, items);
+  return items;
+}
+
+function rememberSessionCatalogo(
+  catalogo: CatalogoKey,
+  version: number,
+  includeInactive: boolean,
+): void {
+  const current = sessionCatalogs.get(catalogo);
+  sessionCatalogs.set(catalogo, {
+    version,
+    includeInactive: includeInactive || current?.includeInactive === true,
+  });
+}
+
+function hasSessionCatalogo(catalogo: CatalogoKey, includeInactive: boolean): boolean {
+  const session = sessionCatalogs.get(catalogo);
+  return Boolean(session && (session.includeInactive || !includeInactive));
+}
+
+function hasRequiredScope(
+  localMeta: CatalogoLocalMeta | undefined,
+  includeInactive: boolean,
+): boolean {
+  return Boolean(localMeta && (localMeta.includeInactive || !includeInactive));
+}
+
+function setCatalogosFallbackWarning(error: unknown): void {
+  lastCatalogosWarning =
+    'No se pudo validar catalogos en Firestore. Se usaran los datos locales disponibles.';
+  warnCatalogosDiagnostic('fallback a cache local de catalogos', {
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
+
+async function useLocalCatalogoFallback(
+  catalogo: CatalogoKey,
+  includeInactive: boolean,
+  error: unknown,
+): Promise<void> {
+  const table = getCatalogoLocalTable(catalogo);
+  const localCount = await table.count();
+  const localMeta = await catalogMetaTable.get(catalogo);
+
+  if (localCount > 0) {
+    setCatalogosFallbackWarning(error);
+    await hydrateCatalogoMemory(catalogo);
+    rememberSessionCatalogo(catalogo, localMeta?.version ?? 0, localMeta?.includeInactive === true);
+    return;
+  }
+
+  throw new Error(
+    'No se pudieron cargar los catalogos desde Firestore y no hay cache local disponible.',
+  );
+}
+
+async function storeRemoteCatalogoItems(
+  catalogo: CatalogoKey,
+  remoteItems: CatalogoTableItem[],
+  remoteMeta: RemoteCatalogoMeta,
+  includeInactive: boolean,
+  previousMeta: CatalogoLocalMeta | undefined,
+): Promise<void> {
+  const table = getCatalogoLocalTable(catalogo);
+  const remoteIds = new Set(remoteItems.map((item) => item.id));
+  const lastFetchedAt = nowIso();
+
+  await db.transaction('rw', table, catalogMetaTable, async () => {
+    if (remoteItems.length > 0) {
+      await table.bulkPut(remoteItems);
+    }
+
+    if (includeInactive) {
+      const localKeys = (await table.toCollection().primaryKeys()).map(String);
+      const staleIds = localKeys.filter((itemId) => !remoteIds.has(itemId));
+
+      if (staleIds.length > 0) {
+        await table.bulkDelete(staleIds);
+      }
+    } else {
+      const activeLocalItems = await table
+        .filter((item) => isActivo(item.activo))
+        .toArray();
+      const staleActiveIds = activeLocalItems
+        .filter((item) => !remoteIds.has(item.id))
+        .map((item) => item.id);
+
+      if (staleActiveIds.length > 0) {
+        await table.bulkDelete(staleActiveIds);
       }
     }
 
+    await catalogMetaTable.put({
+      catalogoId: catalogo,
+      version: remoteMeta.version,
+      updatedAt: remoteMeta.updatedAt,
+      lastFetchedAt,
+      includeInactive: includeInactive || previousMeta?.includeInactive === true,
+    });
+  });
+
+  await hydrateCatalogoMemory(catalogo);
+  rememberSessionCatalogo(catalogo, remoteMeta.version, includeInactive);
+  logCatalogosDiagnostic('catalogo sincronizado desde Firestore', {
+    catalogo,
+    version: remoteMeta.version,
+    includeInactive,
+    total: remoteItems.length,
+  });
+}
+
+async function loadCatalogoNow(
+  catalogo: CatalogoKey,
+  includeInactive: boolean,
+  force: boolean,
+): Promise<void> {
+  if (!navigator.onLine || !firebaseAuth.currentUser) {
+    await useLocalCatalogoFallback(catalogo, includeInactive, 'sin conexion o sesion');
     return;
   }
 
-  remoteCatalogosWithDocuments.add(collectionName);
-  await table.bulkPut(
-    snapshot.docs.map((documentSnapshot) =>
-      normalizer(documentSnapshot.id, documentSnapshot.data() as RemoteCatalogoData),
-    ),
+  const localMeta = await catalogMetaTable.get(catalogo);
+  let remoteMeta: RemoteCatalogoMeta;
+
+  try {
+    remoteMeta = await getRemoteCatalogoMeta(catalogo);
+  } catch (error) {
+    await useLocalCatalogoFallback(catalogo, includeInactive, error);
+    return;
+  }
+
+  const localCount = await getCatalogoLocalTable(catalogo).count();
+  const canUseLocalVersion =
+    !force &&
+    localMeta &&
+    localCount > 0 &&
+    localMeta.version === remoteMeta.version &&
+    hasRequiredScope(localMeta, includeInactive);
+
+  if (canUseLocalVersion) {
+    await hydrateCatalogoMemory(catalogo);
+    rememberSessionCatalogo(catalogo, localMeta.version, localMeta.includeInactive === true);
+    return;
+  }
+
+  try {
+    const remoteItems = await fetchRemoteCatalogoItems(catalogo, includeInactive);
+    await storeRemoteCatalogoItems(catalogo, remoteItems, remoteMeta, includeInactive, localMeta);
+  } catch (error) {
+    await useLocalCatalogoFallback(catalogo, includeInactive, error);
+  }
+}
+
+async function loadCatalogo(
+  catalogo: CatalogoKey,
+  includeInactive: boolean,
+  force: boolean,
+): Promise<void> {
+  if (!force && hasSessionCatalogo(catalogo, includeInactive)) {
+    return;
+  }
+
+  const promiseKey = `${catalogo}:${includeInactive ? 'all' : 'active'}:${force ? 'force' : 'normal'}`;
+  const currentPromise = catalogLoadPromises.get(promiseKey);
+
+  if (currentPromise) {
+    return currentPromise;
+  }
+
+  const promise = loadCatalogoNow(catalogo, includeInactive, force).finally(() => {
+    catalogLoadPromises.delete(promiseKey);
+  });
+  catalogLoadPromises.set(promiseKey, promise);
+  return promise;
+}
+
+export async function ensureCatalogosLoaded(
+  options: EnsureCatalogosOptions = {},
+): Promise<void> {
+  const includeInactive = options.includeInactive === true;
+  const force = options.force === true;
+  const catalogos = options.catalogos ?? CATALOG_KEYS;
+
+  if (!force && !includeInactive && !options.catalogos && catalogBootstrapCompleted) {
+    return;
+  }
+
+  if (force) {
+    lastCatalogosWarning = null;
+  }
+
+  await Promise.all(
+    catalogos.map((catalogo) => loadCatalogo(catalogo, includeInactive, force)),
   );
+
+  if (!includeInactive && !options.catalogos) {
+    catalogBootstrapCompleted = true;
+  }
 }
 
 export async function refreshCatalogosFromRemote(
-  options: RefreshCatalogosOptions = {},
+  options: Omit<EnsureCatalogosOptions, 'force'> = {},
 ): Promise<void> {
-  if (!navigator.onLine || !firebaseAuth.currentUser) {
-    return;
+  await ensureCatalogosLoaded({
+    ...options,
+    force: true,
+  });
+}
+
+export function getCatalogosLoadWarning(): string | null {
+  return lastCatalogosWarning;
+}
+
+async function getCatalogoItemsFromCache(catalogo: CatalogoKey): Promise<CatalogoTableItem[]> {
+  const cachedItems = catalogItemsCache.get(catalogo);
+
+  if (cachedItems) {
+    return [...cachedItems];
   }
 
+  return hydrateCatalogoMemory(catalogo);
+}
+
+export async function getCatalogoLocalItems(
+  catalogo: CatalogoKey,
+  options: { includeInactive?: boolean; force?: boolean } = {},
+): Promise<CatalogoTableItem[]> {
   const includeInactive = options.includeInactive === true;
 
-  await Promise.all([
-    refreshRemoteTable(
-      'centros_negocio',
-      centrosNegocioTable,
-      normalizeRemoteCentroNegocio,
-      includeInactive,
-    ),
-    refreshRemoteTable(
-      'tipos_documento',
-      tiposDocumentoTable,
-      normalizeRemoteTipoDocumento,
-      includeInactive,
-    ),
-    refreshRemoteTable(
-      'tipos_rendicion',
-      tiposRendicionTable,
-      normalizeRemoteTipoRendicion,
-      includeInactive,
-    ),
-    refreshRemoteTable(
-      'tipos_gasto',
-      tiposGastoTable,
-      normalizeRemoteTipoGasto,
-      includeInactive,
-    ),
-  ]);
+  await ensureCatalogosLoaded({
+    catalogos: [catalogo],
+    includeInactive,
+    force: options.force === true,
+  });
+
+  const items = await getCatalogoItemsFromCache(catalogo);
+  return sortCatalogoItems(includeInactive ? items : items.filter((item) => isActivo(item.activo)));
 }
 
-function getActiveCount<T extends CatalogoBase>(items: T[]): number {
-  return items.filter((item) => isActivo(item.activo)).length;
-}
-
-async function ensureCatalogoSeed<T extends CatalogoBase>(
-  table: CatalogoTable<T>,
-  parsedItems: T[],
-  catalogName: string,
+export async function recordCatalogoLocalWrite(
+  catalogo: CatalogoKey,
+  item: CatalogoTableItem,
 ): Promise<void> {
-  const storedItems = await table.toArray();
-  const totalLocal = storedItems.length;
-  const activeLocal = getActiveCount(storedItems);
-  const activeSeed = getActiveCount(parsedItems);
-  const storedIds = new Set(storedItems.map((item) => item.id));
-  const missingSeedItems = parsedItems.filter((item) => !storedIds.has(item.id));
-  const hasManagedItems = storedItems.some((item) => item.createdAt || item.updatedAt);
-  const hasRemoteDocuments = remoteCatalogosWithDocuments.has(catalogName);
-  const shouldRepairActiveCatalog =
-    activeLocal === 0 &&
-    activeSeed > 0 &&
-    !hasManagedItems &&
-    !hasRemoteDocuments;
+  const table = getCatalogoLocalTable(catalogo);
+  const currentMeta = await catalogMetaTable.get(catalogo);
+  const nextVersion = Math.max(1, (currentMeta?.version ?? 0) + 1);
+  const updatedAt = item.updatedAt ?? nowIso();
 
-  if (totalLocal === 0 || shouldRepairActiveCatalog) {
-    await table.bulkPut(parsedItems);
-    logCatalogosDiagnostic('catalogo hidratado desde seed', {
-      catalogo: catalogName,
-      source: CATALOG_SOURCE,
-      totalLocal,
-      activeLocal,
-      insertedOrRepaired: parsedItems.length,
-      reason: totalLocal === 0 ? 'tabla local vacia' : 'sin registros activos locales',
-    });
-    return;
-  }
-
-  if (missingSeedItems.length > 0 && !hasRemoteDocuments) {
-    await table.bulkPut(missingSeedItems);
-    logCatalogosDiagnostic('catalogo completado desde seed', {
-      catalogo: catalogName,
-      source: CATALOG_SOURCE,
-      totalLocal,
-      activeLocal,
-      missingSeedItems: missingSeedItems.length,
-    });
-    return;
-  }
-
-  logCatalogosDiagnostic('catalogo local disponible', {
-    catalogo: catalogName,
-    source: 'Dexie',
-    totalLocal,
-    activeLocal,
-  });
-}
-
-async function seedTiposRendicionIfEmpty(): Promise<void> {
-  await ensureCatalogoSeed(tiposRendicionTable, parseTiposRendicion(), 'tipos_rendicion');
-}
-
-async function seedCatalogos(): Promise<void> {
-  await refreshCatalogosFromRemote().catch((error) => {
-    warnCatalogosDiagnostic('no se pudo refrescar catalogos desde Firestore', {
-      error: error instanceof Error ? error.message : String(error),
+  await db.transaction('rw', table, catalogMetaTable, async () => {
+    await table.put(item);
+    await catalogMetaTable.put({
+      catalogoId: catalogo,
+      version: nextVersion,
+      updatedAt,
+      lastFetchedAt: nowIso(),
+      includeInactive: true,
     });
   });
 
-  const centrosNegocio = parseCentrosNegocio();
-  const tiposDocumento = parseTiposDocumento();
-  const tiposRendicion = parseTiposRendicion();
-  const tiposGasto = parseTiposGasto();
-
-  await db.transaction(
-    'rw',
-    centrosNegocioTable,
-    tiposDocumentoTable,
-    tiposRendicionTable,
-    tiposGastoTable,
-    async () => {
-      await ensureCatalogoSeed(centrosNegocioTable, centrosNegocio, 'centros_negocio');
-      await ensureCatalogoSeed(tiposDocumentoTable, tiposDocumento, 'tipos_documento');
-      await ensureCatalogoSeed(tiposRendicionTable, tiposRendicion, 'tipos_rendicion');
-      await ensureCatalogoSeed(tiposGastoTable, tiposGasto, 'tipos_gasto');
-    },
-  );
+  await hydrateCatalogoMemory(catalogo);
+  rememberSessionCatalogo(catalogo, nextVersion, true);
 }
 
-export function seedCatalogosIfNeeded(): Promise<void> {
-  if (!seedPromise) {
-    seedPromise = seedCatalogos().finally(() => {
-      seedPromise = null;
-    });
-  }
-
-  return seedPromise;
-}
-
-async function getActiveCatalogo<T extends { activo: boolean; nombre: string }>(
-  loader: () => Promise<T[]>,
+async function getActiveCatalogo<T extends CatalogoTableItem>(
+  catalogo: CatalogoKey,
 ): Promise<T[]> {
-  const items = await loader();
-  return items
-    .filter((item) => isActivo(item.activo))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-}
-
-function logLoadedGastoCatalogos(catalogos: GastoCatalogos): void {
-  const emptyCatalogos = [
-    catalogos.centrosNegocio.length === 0 ? 'centros_negocio' : null,
-    catalogos.tiposDocumento.length === 0 ? 'tipos_documento' : null,
-    catalogos.tiposGasto.length === 0 ? 'tipos_gasto' : null,
-  ].filter(Boolean);
-  const details = {
-    source: CATALOG_SOURCE,
-    centrosNegocio: catalogos.centrosNegocio.length,
-    tiposDocumento: catalogos.tiposDocumento.length,
-    tiposGasto: catalogos.tiposGasto.length,
-    emptyCatalogos,
-  };
-
-  if (emptyCatalogos.length > 0) {
-    warnCatalogosDiagnostic('catalogos vacios despues de intentar cargar seed', details);
-    return;
-  }
-
-  logCatalogosDiagnostic('catalogos cargados para Crear Gasto', details);
+  return getCatalogoLocalItems(catalogo) as Promise<T[]>;
 }
 
 export async function getCentrosNegocio(): Promise<CentroNegocio[]> {
-  await seedCatalogosIfNeeded();
-  return getActiveCatalogo(() => centrosNegocioTable.toArray());
+  return getActiveCatalogo<CentroNegocio>('centros_negocio');
 }
 
 export async function getTiposDocumento(): Promise<TipoDocumento[]> {
-  await seedCatalogosIfNeeded();
-  return getActiveCatalogo(() => tiposDocumentoTable.toArray());
+  return getActiveCatalogo<TipoDocumento>('tipos_documento');
 }
 
 export async function getTiposRendicion(): Promise<TipoRendicion[]> {
-  await seedCatalogosIfNeeded();
-  await seedTiposRendicionIfEmpty();
-  return getActiveCatalogo(() => tiposRendicionTable.toArray());
+  return getActiveCatalogo<TipoRendicion>('tipos_rendicion');
 }
 
 export async function getTiposGasto(): Promise<TipoGasto[]> {
-  await seedCatalogosIfNeeded();
-  return getActiveCatalogo(() => tiposGastoTable.toArray());
+  return getActiveCatalogo<TipoGasto>('tipos_gasto');
 }
 
 export async function getGastoCatalogos(): Promise<GastoCatalogos> {
+  await ensureCatalogosLoaded({
+    catalogos: ['centros_negocio', 'tipos_documento', 'tipos_gasto'],
+  });
+
   const [centrosNegocio, tiposDocumento, tiposGasto] = await Promise.all([
     getCentrosNegocio(),
     getTiposDocumento(),
     getTiposGasto(),
   ]);
 
-  const catalogos = {
+  return {
     centrosNegocio,
     tiposDocumento,
     tiposGasto,
   };
+}
 
-  logLoadedGastoCatalogos(catalogos);
-  return catalogos;
+async function getCatalogoItemById<T extends CatalogoTableItem>(
+  catalogo: CatalogoKey,
+  id: string,
+): Promise<T | undefined> {
+  await ensureCatalogosLoaded({ catalogos: [catalogo] });
+
+  const cachedItems = await getCatalogoItemsFromCache(catalogo);
+  const cachedItem = cachedItems.find((item) => item.id === id);
+
+  if (cachedItem) {
+    return cachedItem as T;
+  }
+
+  return getCatalogoLocalTable(catalogo).get(id) as Promise<T | undefined>;
 }
 
 export async function getCentroNegocioById(id: string): Promise<CentroNegocio | undefined> {
-  await seedCatalogosIfNeeded();
-  return centrosNegocioTable.get(id);
+  return getCatalogoItemById<CentroNegocio>('centros_negocio', id);
 }
 
 export async function getTipoDocumentoById(id: string): Promise<TipoDocumento | undefined> {
-  await seedCatalogosIfNeeded();
-  return tiposDocumentoTable.get(id);
+  return getCatalogoItemById<TipoDocumento>('tipos_documento', id);
 }
 
 export async function getTipoRendicionById(id: string): Promise<TipoRendicion | undefined> {
-  await seedCatalogosIfNeeded();
-  await seedTiposRendicionIfEmpty();
-  return tiposRendicionTable.get(id);
+  return getCatalogoItemById<TipoRendicion>('tipos_rendicion', id);
 }
 
 export async function getTipoGastoById(id: string): Promise<TipoGasto | undefined> {
-  await seedCatalogosIfNeeded();
-  return tiposGastoTable.get(id);
+  return getCatalogoItemById<TipoGasto>('tipos_gasto', id);
 }

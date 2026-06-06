@@ -60,5 +60,9 @@ describe('Firebase security rules', () => {
     assert.match(rules, /allow delete: if false;/);
     assert.match(rules, /allow create: if isCatalogCollection\(catalogo\) && validCatalogWrite\(itemId, true\);/);
     assert.match(rules, /allow update: if isCatalogCollection\(catalogo\) && validCatalogWrite\(itemId, false\);/);
+    assert.match(rules, /match \/catalogos_meta\/\{catalogoId\}/);
+    assert.match(rules, /allow get, list: if signedIn\(\) && isCatalogCollection\(catalogoId\);/);
+    assert.match(rules, /allow create: if validCatalogMetaCreate\(catalogoId\);/);
+    assert.match(rules, /allow update: if validCatalogMetaUpdate\(catalogoId\);/);
   });
 });

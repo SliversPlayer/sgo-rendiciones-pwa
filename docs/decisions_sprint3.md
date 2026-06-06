@@ -144,12 +144,9 @@ No eliminar datos locales después del envío.
 ## Estados de rendición
 
 - BORRADOR
-- PENDIENTE_ENVIO
-- ENVIANDO
 - ENVIADA
 - APROBADA
 - RECHAZADA
-- ERROR
 
 ---
 
@@ -164,11 +161,9 @@ No eliminar datos locales después del envío.
 
 ### RECHAZADA
 - vuelve a editable
-- regresa a BORRADOR
+- conserva el estado RECHAZADA hasta que el usuario reenvia
+- mantiene visible la observacion de rechazo
 
-### ERROR
-- permite reintento
-- mantiene datos locales
 
 ---
 
@@ -255,7 +250,7 @@ Los usuarios:
 Roles definidos:
 - USER
 - ADMIN
-- SUPER_ADMIN
+- SUPERADMIN
 
 ---
 
@@ -280,7 +275,7 @@ Campos mínimos:
 Regla mínima:
 - usuario autenticado solo puede escribir sus rendiciones
 
-ADMIN y SUPER_ADMIN:
+ADMIN y SUPERADMIN:
 - podrán leer todas las rendiciones
 
 ---
@@ -299,7 +294,10 @@ Cada rendición debe tener:
 - LOCAL
 - PENDING
 - SYNCED
-- ERROR
+- PENDING_CREATE
+- PENDING_UPDATE
+- PENDING_DELETE
+- SYNC_ERROR
 
 ---
 

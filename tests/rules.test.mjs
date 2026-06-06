@@ -16,13 +16,21 @@ describe('Firebase security rules', () => {
     const rules = await readFile('storage.rules', 'utf8');
 
     assert.match(rules, /function isEditableRendicion\(rendicionId\)/);
-    assert.match(rules, /rendicion\.estado in \['BORRADOR', 'ENVIANDO', 'RECHAZADA', 'ERROR'\]/);
+    assert.match(rules, /rendicion\.estado in \['BORRADOR', 'RECHAZADA'\]/);
+    assert.doesNotMatch(rules, /rendicion\.estado in \[[^\]]*ENVIANDO/);
+    assert.doesNotMatch(rules, /rendicion\.estado in \[[^\]]*ERROR/);
 
     const createUpdateRule = rules.match(/allow create, update: if[\s\S]*?;/)?.[0] ?? '';
+    const createRule = rules.match(/allow create: if[\s\S]*?;/)?.[0] ?? '';
+    const updateRule = rules.match(/allow update: if[\s\S]*?;/)?.[0] ?? '';
     const deleteRule = rules.match(/allow delete: if[\s\S]*?;/)?.[0] ?? '';
 
-    assert.match(createUpdateRule, /isEditableRendicion\(rendicionId\)/);
-    assert.match(deleteRule, /isEditableRendicion\(rendicionId\)/);
+    assert.equal(createUpdateRule, '');
+    assert.match(createRule, /validUploadMetadata\(rendicionId, gastoId\)/);
+    assert.match(updateRule, /validUploadMetadata\(rendicionId, gastoId\)/);
+    assert.match(deleteRule, /canDeleteAdjunto\(rendicionId\)/);
+    assert.match(rules, /function canDeleteAdjunto\(rendicionId\)/);
+    assert.match(rules, /isEditableRendicion\(rendicionId\)/);
   });
 
   it('validates core Firestore rendicion and gasto payload fields', async () => {
@@ -31,11 +39,16 @@ describe('Firebase security rules', () => {
     assert.match(rules, /function validRequiredString\(value\)/);
     assert.match(rules, /function validPositiveNumber\(value\)/);
     assert.match(rules, /function validNonNegativeNumber\(value\)/);
+    assert.match(rules, /function validSentRendicionData\(data\)/);
+    assert.match(rules, /function validAdjuntosPayload\(adjuntos\)/);
     assert.match(rules, /validRequiredString\(request\.resource\.data\.titulo\)/);
     assert.match(rules, /validRequiredString\(request\.resource\.data\.tipo_rendicion_id\)/);
     assert.match(rules, /validNonNegativeNumber\(request\.resource\.data\.total_gastos\)/);
+    assert.match(rules, /validPositiveNumber\(data\.total_gastos\)/);
+    assert.match(rules, /validPositiveNumber\(data\.monto_total\)/);
     assert.match(rules, /validRequiredString\(request\.resource\.data\.numero_documento\)/);
     assert.match(rules, /validPositiveNumber\(request\.resource\.data\.monto\)/);
+    assert.match(rules, /validDownloadURL\(adjunto\.downloadURL\)/);
   });
 
   it('preserves least-privilege user and catalog writes', async () => {

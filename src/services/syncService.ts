@@ -1,5 +1,5 @@
 import { FirebaseError } from 'firebase/app';
-import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteField, doc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { adjuntosTable, gastosTable, rendicionesTable } from './db';
@@ -32,7 +32,6 @@ interface PersistOptions {
 const PENDING_SYNC_STATUSES: RendicionSyncStatus[] = [
   'LOCAL',
   'PENDING',
-  'ERROR',
   'PENDING_CREATE',
   'PENDING_UPDATE',
   'PENDING_DELETE',
@@ -72,6 +71,39 @@ function isSyncPending(status: RendicionSyncStatus): boolean {
   return PENDING_SYNC_STATUSES.includes(status);
 }
 
+function getFailedSyncStatus(status?: RendicionSyncStatus): RendicionSyncStatus {
+  if (status === 'PENDING_DELETE') {
+    return 'PENDING_DELETE';
+  }
+
+  if (status === 'LOCAL' || status === 'PENDING_CREATE') {
+    return 'PENDING_CREATE';
+  }
+
+  if (status === 'PENDING') {
+    return 'PENDING_UPDATE';
+  }
+
+  return 'SYNC_ERROR';
+}
+
+function hasRemoteSnapshot(rendicion: Rendicion): boolean {
+  return rendicion.sync_status !== 'LOCAL' && rendicion.sync_status !== 'PENDING_CREATE';
+}
+
+function isValidDownloadURL(value?: string): value is string {
+  if (!value?.trim()) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function validateGasto(gasto: Gasto, adjuntos: Adjunto[]): string | null {
   const centroNegocioId = gasto.centro_negocio_id ?? gasto.centro_costo_id;
   const centroNegocioNombre = gasto.centro_negocio_nombre ?? gasto.centro_costo_nombre;
@@ -106,7 +138,7 @@ function validateGasto(gasto: Gasto, adjuntos: Adjunto[]): string | null {
     return `El gasto "${gasto.glosa}" no tiene tipo de gasto completo.`;
   }
 
-  if (!gasto.monto || gasto.monto <= 0) {
+  if (!Number.isFinite(gasto.monto) || gasto.monto <= 0) {
     return `El gasto "${gasto.glosa}" debe tener monto mayor a 0.`;
   }
 
@@ -142,10 +174,6 @@ function validateRendicionForSend(
 
   if (rendicion.estado === 'APROBADA') {
     throw new Error('Esta rendicion ya fue aprobada y no puede reenviarse.');
-  }
-
-  if (rendicion.estado === 'ENVIANDO') {
-    throw new Error('Esta rendicion ya esta en proceso de envio.');
   }
 
   if (gastos.length === 0) {
@@ -187,10 +215,15 @@ async function uploadAdjuntos(
   rendicionId: string,
   gastoId: string,
   adjuntos: Adjunto[],
+  user: User,
 ): Promise<UploadedAdjunto[]> {
   return Promise.all(
     adjuntos.map(async (adjunto) => {
-      if (adjunto.storagePath && adjunto.downloadURL) {
+      if (adjunto.storagePath) {
+        if (!isValidDownloadURL(adjunto.downloadURL)) {
+          throw new Error(`El adjunto "${adjunto.nombre}" no tiene una URL de descarga valida.`);
+        }
+
         return {
           id: adjunto.id,
           nombre: adjunto.nombre,
@@ -208,6 +241,12 @@ async function uploadAdjuntos(
 
       await uploadBytes(storageRef, adjunto.archivo, {
         contentType: adjunto.tipo,
+        customMetadata: {
+          ownerUid: user.uid,
+          rendicionId,
+          gastoId,
+          adjuntoId: adjunto.id,
+        },
       });
 
       return {
@@ -276,11 +315,18 @@ function buildRemoteRendicionPayload(
     updated_at_remote: serverTimestamp(),
   };
 
-  return fechaEnvio ? { ...payload, fecha_envio: fechaEnvio } : payload;
-}
+  const payloadWithSendDate = fechaEnvio ? { ...payload, fecha_envio: fechaEnvio } : payload;
 
-function getPreUploadEstado(estado: Rendicion['estado']): Rendicion['estado'] {
-  return estado === 'ENVIADA' ? 'ENVIANDO' : estado;
+  if (estado === 'ENVIADA') {
+    return {
+      ...payloadWithSendDate,
+      fecha_rechazo: deleteField(),
+      usuario_rechazo: deleteField(),
+      observacion_rechazo: deleteField(),
+    };
+  }
+
+  return payloadWithSendDate;
 }
 
 function buildRemoteGastoPayload(
@@ -327,7 +373,7 @@ async function markRendicionSyncError(rendicionId: string, error: unknown): Prom
   const current = await rendicionesTable.get(rendicionId);
 
   await rendicionesTable.update(rendicionId, {
-    sync_status: current?.sync_status === 'PENDING_DELETE' ? 'PENDING_DELETE' : 'SYNC_ERROR',
+    sync_status: getFailedSyncStatus(current?.sync_status),
     sync_error: getSyncErrorMessage(error),
   });
 }
@@ -346,6 +392,12 @@ async function markRendicionSynced(
 
   if (fechaEnvio !== undefined) {
     updates.fecha_envio = fechaEnvio;
+  }
+
+  if (estado === 'ENVIADA') {
+    updates.fecha_rechazo = undefined;
+    updates.usuario_rechazo = undefined;
+    updates.observacion_rechazo = undefined;
   }
 
   await rendicionesTable.update(rendicionId, updates);
@@ -410,29 +462,16 @@ async function persistRendicionSnapshot(
   const uploadedByGasto = new Map<string, UploadedAdjunto[]>();
   const rendicionRef = doc(firestoreDb, 'rendiciones', rendicion.id);
 
-  await setDoc(
-    rendicionRef,
-    buildRemoteRendicionPayload(
-      rendicion,
-      user,
-      usuarioNombre,
-      gastos,
-      getPreUploadEstado(estado),
-      undefined,
-    ),
-    { merge: true },
-  );
-
   for (const { gasto, adjuntos } of gastos) {
     uploadedByGasto.set(
       gasto.id,
-      await uploadAdjuntos(rendicion.id, gasto.id, adjuntos),
+      await uploadAdjuntos(rendicion.id, gasto.id, adjuntos, user),
     );
   }
 
-  const existingGastosSnapshot = await getDocs(
-    collection(firestoreDb, 'rendiciones', rendicion.id, 'gastos'),
-  );
+  const existingGastosSnapshot = hasRemoteSnapshot(rendicion)
+    ? await getDocs(collection(firestoreDb, 'rendiciones', rendicion.id, 'gastos'))
+    : null;
   const localGastoIds = new Set(gastos.map(({ gasto }) => gasto.id));
   const batch = writeBatch(firestoreDb);
   const userEmail = user.email ?? rendicion.usuario_email ?? '';
@@ -443,7 +482,7 @@ async function persistRendicionSnapshot(
     { merge: true },
   );
 
-  existingGastosSnapshot.docs.forEach((gastoSnapshot) => {
+  existingGastosSnapshot?.docs.forEach((gastoSnapshot) => {
     if (!localGastoIds.has(gastoSnapshot.id)) {
       batch.delete(gastoSnapshot.ref);
     }
@@ -545,20 +584,13 @@ export async function sendRendicion(
   const fechaEnvio = nowIso();
 
   try {
-    await rendicionesTable.update(rendicion.id, {
-      estado: 'ENVIANDO',
-      sync_status: 'PENDING_UPDATE',
-      sync_error: undefined,
-    });
-
     await persistRendicionSnapshot(rendicion.id, user, usuarioNombre, {
       estado: 'ENVIADA',
       fechaEnvio,
     });
   } catch (error) {
     await rendicionesTable.update(rendicion.id, {
-      estado: 'ERROR',
-      sync_status: 'SYNC_ERROR',
+      sync_status: getFailedSyncStatus(rendicion.sync_status),
       sync_error: getSyncErrorMessage(error),
     });
 

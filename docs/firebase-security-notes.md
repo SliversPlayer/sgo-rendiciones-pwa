@@ -7,7 +7,7 @@ Las reglas definitivas deberan permitir:
 - Usuario autenticado puede crear y leer sus propias rendiciones.
 - Usuario autenticado puede escribir gastos solo bajo sus propias rendiciones.
 - Usuario autenticado puede subir adjuntos asociados a sus propias rendiciones.
-- ADMIN y SUPER_ADMIN podran leer todas las rendiciones en un sprint futuro.
+- ADMIN podra leer rendiciones del flujo administrativo y SUPERADMIN tendra acceso completo segun reglas vigentes.
 
 El MVP usa los UUID locales como IDs remotos para evitar duplicados:
 

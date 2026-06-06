@@ -22,12 +22,9 @@ import { firestoreDb } from './firebase/firebase';
 type AdminRendicionEstado = Extract<RendicionEstado, 'ENVIADA' | 'APROBADA' | 'RECHAZADA'>;
 const RENDICION_ESTADOS: RendicionEstado[] = [
   'BORRADOR',
-  'PENDIENTE_ENVIO',
-  'ENVIANDO',
   'ENVIADA',
   'APROBADA',
   'RECHAZADA',
-  'ERROR',
 ];
 const ADMIN_ESTADOS: AdminRendicionEstado[] = ['ENVIADA', 'APROBADA', 'RECHAZADA'];
 const ADMIN_ESTADO_VARIANT_BY_ESTADO: Record<AdminRendicionEstado, string[]> = {
@@ -62,7 +59,16 @@ function isRendicionEstado(value: unknown): value is RendicionEstado {
 function normalizeAdminEstado(value?: string): RendicionEstado {
   const normalizedValue = value?.trim().toUpperCase();
 
-  return isRendicionEstado(normalizedValue) ? normalizedValue : 'ERROR';
+  return isRendicionEstado(normalizedValue) ? normalizedValue : 'BORRADOR';
+}
+
+function getAdminSortTimestamp(rendicion: AdminRendicion): number {
+  return new Date(
+    rendicion.fecha_aprobacion ??
+      rendicion.fecha_rechazo ??
+      rendicion.fecha_envio ??
+      rendicion.fecha_actualizacion,
+  ).getTime();
 }
 
 function normalizeRendicion(id: string, data: Partial<AdminRendicion>): AdminRendicion {
@@ -152,8 +158,7 @@ export async function getAdminRendiciones(
     .filter((rendicion) => isAdminEstado(rendicion.estado))
     .sort(
       (first, second) =>
-        new Date(second.fecha_envio ?? second.fecha_actualizacion).getTime() -
-        new Date(first.fecha_envio ?? first.fecha_actualizacion).getTime(),
+        getAdminSortTimestamp(second) - getAdminSortTimestamp(first),
     );
 }
 

@@ -64,7 +64,8 @@ service cloud.firestore {
 
     function canReadRendicionData(data) {
       return isOwnRendicion(data) ||
-        (isAdmin() && isAdminVisibleEstado(data.estado));
+        isSuperAdmin() ||
+        (hasRole('ADMIN') && isAdminVisibleEstado(data.estado));
     }
 
     function rendicionPath(rendicionId) {
@@ -87,7 +88,7 @@ service cloud.firestore {
       return getAfter(rendicionPath(rendicionId)).data;
     }
 
-    function userRendicionWriteFields() {
+    function userRendicionCreateFields() {
       return [
         'id',
         'uid',
@@ -118,8 +119,42 @@ service cloud.firestore {
       ];
     }
 
+    function userRendicionUpdateFields() {
+      return [
+        'id',
+        'uid',
+        'usuario_id',
+        'ownerUid',
+        'usuario_email',
+        'ownerEmail',
+        'usuario_nombre',
+        'titulo',
+        'glosa',
+        'glosa_grupo',
+        'tipo_rendicion_id',
+        'tipo_rendicion_nombre',
+        'tipo_rendicion_cuenta_contable',
+        'estado',
+        'sync_status',
+        'fecha_creacion',
+        'fecha_actualizacion',
+        'fecha_envio',
+        'fecha_rechazo',
+        'usuario_rechazo',
+        'observacion_rechazo',
+        'total_gastos',
+        'monto_total',
+        'last_synced_at',
+        'createdAt',
+        'updatedAt',
+        'lastSyncedAt',
+        'created_at_remote',
+        'updated_at_remote'
+      ];
+    }
+
     function validUserCreateEstado(estado) {
-      return estado in ['BORRADOR', 'ENVIANDO', 'ENVIADA'];
+      return estado in ['BORRADOR', 'ENVIADA'];
     }
 
     function validOptionalString(value) {
@@ -138,30 +173,68 @@ service cloud.firestore {
       return value is number && value >= 0;
     }
 
+    function validSyncStatus(value) {
+      return value in [
+        'LOCAL',
+        'PENDING',
+        'SYNCED',
+        'PENDING_CREATE',
+        'PENDING_UPDATE',
+        'PENDING_DELETE',
+        'SYNC_ERROR'
+      ];
+    }
+
+    function validSentRendicionData(data) {
+      return data.estado != 'ENVIADA' ||
+        (
+          validRequiredString(data.fecha_envio) &&
+          validPositiveNumber(data.total_gastos) &&
+          validPositiveNumber(data.monto_total)
+        );
+    }
+
     function validUserEstadoTransition(before, after) {
-      return after in ['BORRADOR', 'ENVIANDO', 'ENVIADA', 'RECHAZADA', 'ERROR'] &&
+      return before in ['BORRADOR', 'RECHAZADA'] &&
+        after in ['BORRADOR', 'ENVIADA', 'RECHAZADA'] &&
         (
           before == after ||
-          (
-            before in ['BORRADOR', 'PENDIENTE_ENVIO', 'ENVIANDO', 'RECHAZADA', 'ERROR'] &&
-            after in ['ENVIANDO', 'ENVIADA']
-          )
+          after == 'ENVIADA'
+        );
+    }
+
+    function validOwnerRejectionMetadataUpdate() {
+      return (
+          request.resource.data.estado == 'ENVIADA' &&
+          !request.resource.data.keys().hasAny([
+            'fecha_rechazo',
+            'usuario_rechazo',
+            'observacion_rechazo'
+          ])
+        ) ||
+        (
+          request.resource.data.estado != 'ENVIADA' &&
+          request.resource.data.get('fecha_rechazo', null) == resource.data.get('fecha_rechazo', null) &&
+          request.resource.data.get('usuario_rechazo', null) == resource.data.get('usuario_rechazo', null) &&
+          request.resource.data.get('observacion_rechazo', null) == resource.data.get('observacion_rechazo', null)
         );
     }
 
     function validOwnerRendicionCreate(rendicionId) {
       return isActiveUser() &&
         request.resource.data.keys().hasAll(['id', 'uid', 'usuario_id', 'ownerUid', 'estado']) &&
-        request.resource.data.keys().hasOnly(userRendicionWriteFields()) &&
+        request.resource.data.keys().hasOnly(userRendicionCreateFields()) &&
         hasNormalizedOwner(request.resource.data) &&
         request.resource.data.id == rendicionId &&
         validRequiredString(request.resource.data.titulo) &&
         validRequiredString(request.resource.data.tipo_rendicion_id) &&
         validRequiredString(request.resource.data.tipo_rendicion_nombre) &&
         validRequiredString(request.resource.data.tipo_rendicion_cuenta_contable) &&
+        validSyncStatus(request.resource.data.sync_status) &&
         validNonNegativeNumber(request.resource.data.total_gastos) &&
         validNonNegativeNumber(request.resource.data.monto_total) &&
-        validUserCreateEstado(request.resource.data.estado);
+        validUserCreateEstado(request.resource.data.estado) &&
+        validSentRendicionData(request.resource.data);
     }
 
     function validOwnerRendicionUpdate(rendicionId) {
@@ -169,20 +242,23 @@ service cloud.firestore {
         isOwnRendicion(resource.data) &&
         hasNormalizedOwner(request.resource.data) &&
         request.resource.data.id == rendicionId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(userRendicionWriteFields()) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(userRendicionUpdateFields()) &&
         validRequiredString(request.resource.data.titulo) &&
         validRequiredString(request.resource.data.tipo_rendicion_id) &&
         validRequiredString(request.resource.data.tipo_rendicion_nombre) &&
         validRequiredString(request.resource.data.tipo_rendicion_cuenta_contable) &&
+        validSyncStatus(request.resource.data.sync_status) &&
         validNonNegativeNumber(request.resource.data.total_gastos) &&
         validNonNegativeNumber(request.resource.data.monto_total) &&
-        validUserEstadoTransition(resource.data.estado, request.resource.data.estado);
+        validUserEstadoTransition(resource.data.estado, request.resource.data.estado) &&
+        validSentRendicionData(request.resource.data) &&
+        validOwnerRejectionMetadataUpdate();
     }
 
     function validOwnerRendicionDelete() {
       return isActiveUser() &&
         isOwnRendicion(resource.data) &&
-        resource.data.estado in ['BORRADOR', 'RECHAZADA', 'ERROR'];
+        resource.data.estado in ['BORRADOR', 'RECHAZADA'];
     }
 
     function validAdminApprovalUpdate() {
@@ -267,6 +343,40 @@ service cloud.firestore {
         data.uid == request.auth.uid;
     }
 
+    function validDownloadURL(value) {
+      return value is string &&
+        value.size() > 8 &&
+        value.matches('https://[^ ]+');
+    }
+
+    function validAdjuntoPayload(adjunto) {
+      return adjunto is map &&
+        adjunto.keys().hasOnly([
+          'id',
+          'nombre',
+          'tipo',
+          'size',
+          'storagePath',
+          'downloadURL',
+          'uploadedAt'
+        ]) &&
+        validRequiredString(adjunto.id) &&
+        validRequiredString(adjunto.nombre) &&
+        validRequiredString(adjunto.tipo) &&
+        validNonNegativeNumber(adjunto.size) &&
+        validRequiredString(adjunto.storagePath) &&
+        validDownloadURL(adjunto.downloadURL) &&
+        validRequiredString(adjunto.uploadedAt);
+    }
+
+    function validAdjuntosPayload(adjuntos) {
+      return adjuntos is list &&
+        adjuntos.size() > 0 &&
+        adjuntos.size() <= 2 &&
+        validAdjuntoPayload(adjuntos[0]) &&
+        (adjuntos.size() < 2 || validAdjuntoPayload(adjuntos[1]));
+    }
+
     function validGastoPayload(rendicionId, gastoId) {
       return request.resource.data.keys().hasAll(['id', 'rendicion_id', 'uid', 'usuario_id', 'ownerUid']) &&
         request.resource.data.keys().hasOnly(gastoWriteFields()) &&
@@ -286,6 +396,7 @@ service cloud.firestore {
         validRequiredString(request.resource.data.tipo_gasto_nombre) &&
         validRequiredString(request.resource.data.tipo_gasto_cuenta_contable) &&
         validPositiveNumber(request.resource.data.monto) &&
+        validAdjuntosPayload(request.resource.data.adjuntos) &&
         hasNormalizedGastoOwner(request.resource.data);
     }
 
@@ -297,10 +408,13 @@ service cloud.firestore {
         rendicionExistsAfter(rendicionId) &&
         isOwnRendicion(after) &&
         (
-          after.estado in ['BORRADOR', 'ENVIANDO', 'RECHAZADA', 'ERROR'] ||
+          after.estado in ['BORRADOR', 'RECHAZADA'] ||
           (
             after.estado == 'ENVIADA' &&
-            before.estado in ['BORRADOR', 'PENDIENTE_ENVIO', 'ENVIANDO', 'RECHAZADA', 'ERROR']
+            (
+              !rendicionExists(rendicionId) ||
+              before.estado in ['BORRADOR', 'RECHAZADA']
+            )
           )
         );
     }
@@ -309,7 +423,7 @@ service cloud.firestore {
       return isActiveUser() &&
         rendicionExists(rendicionId) &&
         isOwnRendicion(rendicionData(rendicionId)) &&
-        rendicionData(rendicionId).estado in ['BORRADOR', 'RECHAZADA', 'ERROR'];
+        rendicionData(rendicionId).estado in ['BORRADOR', 'RECHAZADA'];
     }
 
     function userSelfUpdateFields() {

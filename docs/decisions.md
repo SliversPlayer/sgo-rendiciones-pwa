@@ -72,11 +72,9 @@ Tipos permitidos:
 ## Estados de rendición
 
 - BORRADOR
-- PENDIENTE_ENVIO
 - ENVIADA
 - APROBADA
 - RECHAZADA
-- ERROR
 
 ---
 
@@ -84,7 +82,7 @@ Tipos permitidos:
 
 - rendiciones ENVIADAS no son editables
 - rendiciones ENVIADAS no pueden eliminarse
-- rendiciones RECHAZADAS vuelven a BORRADOR
+- rendiciones RECHAZADAS permanecen editables y conservan la observacion de rechazo hasta el reenvio
 
 ---
 
@@ -102,7 +100,7 @@ Tipos permitidos:
 Roles definidos:
 - USER
 - ADMIN
-- SUPER_ADMIN
+- SUPERADMIN
 
 Los usuarios:
 - serán creados manualmente desde Firebase Console en el MVP

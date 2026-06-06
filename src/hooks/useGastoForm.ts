@@ -220,7 +220,9 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       return 'Selecciona un tipo de gasto.';
     }
 
-    if (!data.monto || Number(data.monto) <= 0) {
+    const monto = Number(data.monto);
+
+    if (!data.monto.trim() || !Number.isFinite(monto) || monto <= 0) {
       return 'Ingresa un monto mayor a 0.';
     }
 

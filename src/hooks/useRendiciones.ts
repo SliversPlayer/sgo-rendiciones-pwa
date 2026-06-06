@@ -16,6 +16,8 @@ const emptyStats: RendicionesStats = {
   totalRendiciones: 0,
   totalBorradores: 0,
   totalEnviadas: 0,
+  totalAprobadas: 0,
+  totalRechazadas: 0,
   montoTotalAcumulado: 0,
 };
 

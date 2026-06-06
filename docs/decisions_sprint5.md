@@ -43,7 +43,8 @@ BORRADOR
 BORRADOR
 → ENVIADA
 → RECHAZADA
-→ BORRADOR editable nuevamente
+→ RECHAZADA editable nuevamente
+→ ENVIADA
 
 ---
 
@@ -53,9 +54,9 @@ BORRADOR
 
 Al rechazar:
 
-* el ADMIN/SUPER_ADMIN debe ingresar una observación obligatoria
+* el ADMIN/SUPERADMIN debe ingresar una observación obligatoria
 * la rendición vuelve a editable para el usuario
-* la rendición regresa al estado BORRADOR
+* la rendición permanece en estado RECHAZADA hasta el reenvío
 * el usuario puede corregir y reenviar
 
 ---
@@ -80,7 +81,7 @@ Roles válidos:
 
 * USER
 * ADMIN
-* SUPER_ADMIN
+* SUPERADMIN
 
 ---
 
@@ -126,7 +127,7 @@ NO puede:
 
 ---
 
-## SUPER_ADMIN
+## SUPERADMIN
 
 Mismos permisos ADMIN.
 

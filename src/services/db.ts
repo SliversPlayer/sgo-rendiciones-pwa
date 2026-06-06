@@ -140,7 +140,7 @@ class SgoRendicionesDatabase extends Dexie {
             rendicion.sync_status = 'PENDING_UPDATE';
           }
 
-          if (rendicion.sync_status === 'ERROR') {
+          if ((rendicion.sync_status as string) === 'ERROR') {
             rendicion.sync_status = 'SYNC_ERROR';
           }
 
@@ -169,6 +169,28 @@ class SgoRendicionesDatabase extends Dexie {
 
           if (!gasto.fecha_actualizacion) {
             gasto.fecha_actualizacion = rendicion?.fecha_actualizacion ?? gasto.fecha;
+          }
+        });
+      });
+
+    this.version(7)
+      .stores({
+        rendiciones:
+          'id, usuario_id, uid, estado, sync_status, tipo_rendicion_id, fecha_creacion, fecha_actualizacion, fecha_envio, last_synced_at',
+        gastos:
+          'id, rendicion_id, usuario_id, uid, fecha, centro_negocio_id, tipo_documento_id, tipo_gasto_id',
+        adjuntos: 'id, gasto_id, storagePath',
+        centros_negocio: 'id, codigo, activo, nombre',
+        tipos_documento: 'id, codigo, cuenta_contable, activo, nombre',
+        tipos_rendicion: 'id, cuenta_contable, activo, nombre',
+        tipos_gasto: 'id, cuenta_contable, activo, nombre',
+      })
+      .upgrade(async (transaction) => {
+        await transaction.table<Rendicion, string>('rendiciones').toCollection().modify((rendicion) => {
+          if (['PENDIENTE_ENVIO', 'ENVIANDO', 'ERROR'].includes(rendicion.estado as string)) {
+            rendicion.estado = 'BORRADOR';
+            rendicion.sync_status =
+              rendicion.sync_status === 'SYNCED' ? 'PENDING_UPDATE' : rendicion.sync_status;
           }
         });
       });

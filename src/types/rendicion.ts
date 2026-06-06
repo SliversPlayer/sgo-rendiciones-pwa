@@ -1,17 +1,13 @@
 export type RendicionEstado =
   | 'BORRADOR'
-  | 'PENDIENTE_ENVIO'
-  | 'ENVIANDO'
   | 'ENVIADA'
   | 'APROBADA'
-  | 'RECHAZADA'
-  | 'ERROR';
+  | 'RECHAZADA';
 
 export type RendicionSyncStatus =
   | 'LOCAL'
   | 'PENDING'
   | 'SYNCED'
-  | 'ERROR'
   | 'PENDING_CREATE'
   | 'PENDING_UPDATE'
   | 'PENDING_DELETE'

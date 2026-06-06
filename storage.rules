@@ -30,6 +30,10 @@ service firebase.storage {
       return hasRole('ADMIN') || hasRole('SUPERADMIN');
     }
 
+    function isSuperAdmin() {
+      return hasRole('SUPERADMIN');
+    }
+
     function isAdminVisibleEstado(estado) {
       return estado in [
         'ENVIADA',
@@ -70,13 +74,58 @@ service firebase.storage {
       let rendicion = rendicionData(rendicionId);
 
       return isOwnRendicion(rendicionId) ||
-        (isAdmin() && isAdminVisibleEstado(rendicion.estado));
+        isSuperAdmin() ||
+        (hasRole('ADMIN') && isAdminVisibleEstado(rendicion.estado));
     }
 
     function isEditableRendicion(rendicionId) {
       let rendicion = rendicionData(rendicionId);
 
-      return rendicion.estado in ['BORRADOR', 'ENVIANDO', 'RECHAZADA', 'ERROR'];
+      return rendicion.estado in ['BORRADOR', 'RECHAZADA'];
+    }
+
+    function validUploadMetadata(rendicionId, gastoId) {
+      return request.resource.metadata.ownerUid == request.auth.uid &&
+        request.resource.metadata.rendicionId == rendicionId &&
+        request.resource.metadata.gastoId == gastoId &&
+        request.resource.metadata.adjuntoId is string &&
+        request.resource.metadata.adjuntoId.size() > 0;
+    }
+
+    function canCreateAdjunto(rendicionId) {
+      return !rendicionExists(rendicionId) ||
+        (
+          isOwnRendicion(rendicionId) &&
+          isEditableRendicion(rendicionId)
+        );
+    }
+
+    function canUpdateAdjunto(rendicionId) {
+      return (
+          rendicionExists(rendicionId) &&
+          isOwnRendicion(rendicionId) &&
+          isEditableRendicion(rendicionId)
+        ) ||
+        (
+          !rendicionExists(rendicionId) &&
+          resource.metadata.ownerUid == request.auth.uid
+        );
+    }
+
+    function canDeleteAdjunto(rendicionId) {
+      return (
+          rendicionExists(rendicionId) &&
+          isOwnRendicion(rendicionId) &&
+          isEditableRendicion(rendicionId)
+        ) ||
+        (
+          !rendicionExists(rendicionId) &&
+          resource.metadata.ownerUid == request.auth.uid
+        );
+    }
+
+    function canReadOrphanAdjunto() {
+      return resource.metadata.ownerUid == request.auth.uid;
     }
 
     function isAllowedAdjuntoContentType() {
@@ -91,20 +140,31 @@ service firebase.storage {
 
     match /adjuntos/{rendicionId}/{gastoId}/{fileName} {
       allow read: if signedIn() &&
-        rendicionExists(rendicionId) &&
-        canReadRendicionAdjunto(rendicionId);
+        (
+          (
+            rendicionExists(rendicionId) &&
+            canReadRendicionAdjunto(rendicionId)
+          ) ||
+          (
+            !rendicionExists(rendicionId) &&
+            canReadOrphanAdjunto()
+          )
+        );
 
-      allow create, update: if isActiveUser() &&
-        rendicionExists(rendicionId) &&
-        isOwnRendicion(rendicionId) &&
-        isEditableRendicion(rendicionId) &&
+      allow create: if isActiveUser() &&
+        canCreateAdjunto(rendicionId) &&
+        validUploadMetadata(rendicionId, gastoId) &&
+        isAllowedAdjuntoContentType() &&
+        isAllowedAdjuntoSize();
+
+      allow update: if isActiveUser() &&
+        canUpdateAdjunto(rendicionId) &&
+        validUploadMetadata(rendicionId, gastoId) &&
         isAllowedAdjuntoContentType() &&
         isAllowedAdjuntoSize();
 
       allow delete: if isActiveUser() &&
-        rendicionExists(rendicionId) &&
-        isOwnRendicion(rendicionId) &&
-        isEditableRendicion(rendicionId);
+        canDeleteAdjunto(rendicionId);
     }
 
     match /{allPaths=**} {

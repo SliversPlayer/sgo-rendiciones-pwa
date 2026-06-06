@@ -43,8 +43,7 @@ export function RendicionDetallePage() {
     isOnline &&
     !isSending &&
     isEditable &&
-    isRendicionValida &&
-    rendicion?.estado !== 'ENVIANDO';
+    isRendicionValida;
   const shouldPrioritizeSend = Boolean(canShowSendAction && isEditable && isRendicionValida);
 
   return (
@@ -72,7 +71,7 @@ export function RendicionDetallePage() {
             onClick={() => void handleSend()}
             disabled={!canSendRendicion}
           >
-            {isSending || rendicion?.estado === 'ENVIANDO' ? 'Enviando...' : 'Enviar rendicion'}
+            {isSending ? 'Enviando...' : 'Enviar rendicion'}
           </button>
         ) : null}
         <button

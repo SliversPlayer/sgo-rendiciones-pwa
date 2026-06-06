@@ -15,12 +15,9 @@ type EstadoFilter = 'TODAS' | RendicionEstado;
 const estadoOptions: EstadoFilter[] = [
   'TODAS',
   'BORRADOR',
-  'PENDIENTE_ENVIO',
-  'ENVIANDO',
   'ENVIADA',
   'APROBADA',
   'RECHAZADA',
-  'ERROR',
 ];
 
 function normalizeSearch(value: string): string {
@@ -156,6 +153,14 @@ export function DashboardPage() {
             <div className="stat-card">
               <span>Enviadas</span>
               <strong>{stats.totalEnviadas}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Aprobadas</span>
+              <strong>{stats.totalAprobadas}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Rechazadas</span>
+              <strong>{stats.totalRechazadas}</strong>
             </div>
             <div className="stat-card">
               <span>Monto acumulado</span>

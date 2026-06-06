@@ -20,6 +20,7 @@ import { nowIso } from '../utils/date';
 import { createId } from '../utils/id';
 import { assertRendicionBelongsToUser } from './rendicionesService';
 import type { Rendicion, RendicionSyncStatus } from '../types/rendicion';
+import { isRendicionEditable } from '../utils/rendicionStatus';
 
 async function buildGasto(
   rendicion: Rendicion,
@@ -46,6 +47,12 @@ async function buildGasto(
   const timestamp = nowIso();
   const ownerId = rendicion.usuario_id || rendicion.uid;
 
+  const monto = Number(data.monto);
+
+  if (!Number.isFinite(monto) || monto <= 0) {
+    throw new Error('Ingresa un monto mayor a 0.');
+  }
+
   return {
     id: current?.id ?? createId(),
     rendicion_id: rendicion.id,
@@ -65,7 +72,7 @@ async function buildGasto(
     tipo_gasto_id: tipoGasto.id,
     tipo_gasto_nombre: tipoGasto.nombre,
     tipo_gasto_cuenta_contable: tipoGasto.cuenta_contable,
-    monto: Number(data.monto),
+    monto,
     fecha_creacion: current?.fecha_creacion ?? timestamp,
     fecha_actualizacion: timestamp,
   };
@@ -131,7 +138,7 @@ async function assertRendicionEditable(
 ): Promise<Rendicion> {
   const rendicion = await getOwnedRendicionOrThrow(rendicionId, usuarioId);
 
-  if (!['BORRADOR', 'ERROR', 'RECHAZADA'].includes(rendicion.estado)) {
+  if (!isRendicionEditable(rendicion)) {
     throw new Error('Esta rendicion ya fue enviada y esta bloqueada para edicion.');
   }
 

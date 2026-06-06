@@ -27,20 +27,20 @@ La aplicacion esta pensada para uso en terreno: los datos se crean primero en In
 - Creacion, edicion, listado y eliminacion local de rendiciones editables.
 - Una rendicion representa un grupo de gastos.
 - Tipo de rendicion obligatorio desde catalogo.
-- Estados locales y de sincronizacion:
+- Estados de negocio:
   - `BORRADOR`
-  - `PENDIENTE_ENVIO`
-  - `ENVIANDO`
   - `ENVIADA`
   - `APROBADA`
   - `RECHAZADA`
-  - `ERROR`
-  - sync: `LOCAL`, `PENDING`, `SYNCED`, `ERROR`
-- Las rendiciones enviadas quedan bloqueadas para edicion y eliminacion.
+- Sincronizacion: `LOCAL`, `PENDING`, `SYNCED`, `PENDING_CREATE`, `PENDING_UPDATE`, `PENDING_DELETE`, `SYNC_ERROR`.
+- Los errores de sincronizacion se registran en `sync_error`; no cambian el estado de negocio.
+- Las rendiciones enviadas y aprobadas quedan bloqueadas para edicion y eliminacion. Las rechazadas permanecen editables para correccion y reenvio.
 - Dashboard con busqueda por texto, filtro por estado, orden reciente y estadisticas minimas:
   - total rendiciones
   - total borradores
   - total enviadas
+  - total aprobadas
+  - total rechazadas
   - monto total acumulado
 
 ### Gestion De Gastos
@@ -123,7 +123,7 @@ Los codigos internos y cuentas contables deben preservarse porque sirven para in
   - se guardan los gastos en la subcoleccion `rendiciones/{rendicionId}/gastos`
   - se reutilizan los IDs locales para evitar duplicados en reintentos
   - la rendicion local queda `ENVIADA` y `SYNCED`
-- Si ocurre un error, la rendicion queda en `ERROR` y permite reintento.
+- Si ocurre un error, la rendicion conserva su estado de negocio y guarda el detalle en `sync_error` para permitir reintento.
 
 ### Rutas Y Navegacion
 

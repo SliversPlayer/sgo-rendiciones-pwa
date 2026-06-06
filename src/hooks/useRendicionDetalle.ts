@@ -27,6 +27,7 @@ function isGastoValidoParaEnvio({ gasto, adjuntos }: GastoConAdjuntos): boolean 
       gasto.tipo_gasto_id &&
       gasto.tipo_gasto_nombre &&
       gasto.tipo_gasto_cuenta_contable &&
+      Number.isFinite(gasto.monto) &&
       gasto.monto > 0 &&
       adjuntos.length >= 1,
   );

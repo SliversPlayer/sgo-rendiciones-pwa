@@ -23,6 +23,8 @@ export interface RendicionesStats {
   totalRendiciones: number;
   totalBorradores: number;
   totalEnviadas: number;
+  totalAprobadas: number;
+  totalRechazadas: number;
   montoTotalAcumulado: number;
 }
 
@@ -70,7 +72,7 @@ function currentWasBackedUp(rendicion: Rendicion): boolean {
 }
 
 function hasPendingLocalChanges(rendicion: Rendicion): boolean {
-  return ['LOCAL', 'PENDING', 'ERROR', 'PENDING_CREATE', 'PENDING_UPDATE', 'PENDING_DELETE', 'SYNC_ERROR'].includes(
+  return ['LOCAL', 'PENDING', 'PENDING_CREATE', 'PENDING_UPDATE', 'PENDING_DELETE', 'SYNC_ERROR'].includes(
     rendicion.sync_status,
   );
 }
@@ -143,12 +145,9 @@ function getRemoteAdminFields(remote: Partial<Rendicion>) {
 
 const RENDICION_ESTADOS: RendicionEstado[] = [
   'BORRADOR',
-  'PENDIENTE_ENVIO',
-  'ENVIANDO',
   'ENVIADA',
   'APROBADA',
   'RECHAZADA',
-  'ERROR',
 ];
 
 type RemoteRendicionData = Partial<Rendicion> & {
@@ -172,8 +171,10 @@ interface RemoteAdjuntoData {
 }
 
 function normalizeRemoteEstado(value: unknown): RendicionEstado {
-  return RENDICION_ESTADOS.includes(value as RendicionEstado)
-    ? (value as RendicionEstado)
+  const normalizedValue = typeof value === 'string' ? value.trim().toUpperCase() : '';
+
+  return RENDICION_ESTADOS.includes(normalizedValue as RendicionEstado)
+    ? (normalizedValue as RendicionEstado)
     : 'BORRADOR';
 }
 
@@ -370,6 +371,8 @@ export async function getRendicionesStats(
     totalRendiciones: rendiciones.length,
     totalBorradores: rendiciones.filter((rendicion) => rendicion.estado === 'BORRADOR').length,
     totalEnviadas: rendiciones.filter((rendicion) => rendicion.estado === 'ENVIADA').length,
+    totalAprobadas: rendiciones.filter((rendicion) => rendicion.estado === 'APROBADA').length,
+    totalRechazadas: rendiciones.filter((rendicion) => rendicion.estado === 'RECHAZADA').length,
     montoTotalAcumulado: gastos.reduce((total, gasto) => total + gasto.monto, 0),
   };
 }

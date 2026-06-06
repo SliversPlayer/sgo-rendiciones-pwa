@@ -14,7 +14,7 @@ function getSyncLabel(status: RendicionSyncStatus): string {
     return 'Respaldado';
   }
 
-  if (status === 'SYNC_ERROR' || status === 'ERROR') {
+  if (status === 'SYNC_ERROR') {
     return 'Error de sincronizacion';
   }
 
@@ -34,7 +34,7 @@ function getSyncTone(status: RendicionSyncStatus): string {
     return 'synced';
   }
 
-  if (status === 'SYNC_ERROR' || status === 'ERROR') {
+  if (status === 'SYNC_ERROR') {
     return 'error';
   }
 

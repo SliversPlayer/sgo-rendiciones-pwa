@@ -43,6 +43,20 @@ describe('project configuration', () => {
     );
   });
 
+  it('configures Vercel as a Vite SPA served from dist', async () => {
+    const vercelJson = await readJson('vercel.json');
+
+    assert.equal(vercelJson.framework, 'vite');
+    assert.equal(vercelJson.buildCommand, 'npm run build');
+    assert.equal(vercelJson.outputDirectory, 'dist');
+    assert.deepEqual(vercelJson.rewrites, [
+      {
+        source: '/(.*)',
+        destination: '/index.html',
+      },
+    ]);
+  });
+
   it('keeps env template versionable without exposing local secrets', async () => {
     const gitignore = await readFile('.gitignore', 'utf8');
     const envExample = await readFile('.env.example', 'utf8');
@@ -51,6 +65,14 @@ describe('project configuration', () => {
     assert.match(gitignore, /^!\.env\.example$/m);
     assert.match(envExample, /^VITE_FIREBASE_API_KEY=$/m);
     assert.match(envExample, /^VITE_FIREBASE_APP_ID=$/m);
+  });
+
+  it('keeps Firebase initialization renderable when deployment env is missing', async () => {
+    const firebaseInit = await readFile('src/services/firebase/firebase.ts', 'utf8');
+
+    assert.match(firebaseInit, /missingFirebaseConfigKeys/);
+    assert.match(firebaseInit, /fallbackFirebaseConfig/);
+    assert.match(firebaseInit, /hasFirebaseConfig \? firebaseConfig : fallbackFirebaseConfig/);
   });
 
   it('uses hashed build artifacts and explicit vendor chunks', async () => {

@@ -29,7 +29,18 @@ export const missingFirebaseConfigKeys = Object.entries(firebaseConfig)
 export const hasFirebaseConfig = missingFirebaseConfigKeys.length === 0;
 export { firebaseConfig };
 
-export const firebaseApp = initializeApp(firebaseConfig);
+const fallbackFirebaseConfig = {
+  apiKey: 'missing-firebase-api-key',
+  authDomain: 'missing-firebase-auth-domain.firebaseapp.com',
+  projectId: 'missing-firebase-project',
+  storageBucket: 'missing-firebase-project.appspot.com',
+  messagingSenderId: '0',
+  appId: 'missing-firebase-app-id',
+};
+
+const runtimeFirebaseConfig = hasFirebaseConfig ? firebaseConfig : fallbackFirebaseConfig;
+
+export const firebaseApp = initializeApp(runtimeFirebaseConfig);
 export const firebaseAuth = getAuth(firebaseApp);
 export const firestoreDb = getFirestore(firebaseApp);
 export const firebaseStorage = getStorage(firebaseApp);

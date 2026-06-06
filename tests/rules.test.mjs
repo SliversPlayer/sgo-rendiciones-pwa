@@ -41,6 +41,8 @@ describe('Firebase security rules', () => {
     assert.match(rules, /function validNonNegativeNumber\(value\)/);
     assert.match(rules, /function validSentRendicionData\(data\)/);
     assert.match(rules, /function validAdjuntosPayload\(adjuntos\)/);
+    assert.match(rules, /adjuntos\.size\(\) <= 2/);
+    assert.doesNotMatch(rules, /adjuntos\.size\(\) > 0/);
     assert.match(rules, /validRequiredString\(request\.resource\.data\.titulo\)/);
     assert.match(rules, /validRequiredString\(request\.resource\.data\.tipo_rendicion_id\)/);
     assert.match(rules, /validNonNegativeNumber\(request\.resource\.data\.total_gastos\)/);

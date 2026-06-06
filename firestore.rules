@@ -185,6 +185,15 @@ service cloud.firestore {
       ];
     }
 
+    function validGastoSyncStatus(value) {
+      return value in [
+        'local',
+        'syncing',
+        'synced',
+        'error'
+      ];
+    }
+
     function validSentRendicionData(data) {
       return data.estado != 'ENVIADA' ||
         (
@@ -330,6 +339,10 @@ service cloud.firestore {
         'tipo_gasto_codigo',
         'tipo_gasto_cuenta_contable',
         'monto',
+        'sync_status',
+        'sync_error',
+        'local_id',
+        'remote_id',
         'fecha_creacion',
         'fecha_actualizacion',
         'adjuntos',
@@ -371,10 +384,16 @@ service cloud.firestore {
 
     function validAdjuntosPayload(adjuntos) {
       return adjuntos is list &&
-        adjuntos.size() > 0 &&
         adjuntos.size() <= 2 &&
-        validAdjuntoPayload(adjuntos[0]) &&
+        (adjuntos.size() < 1 || validAdjuntoPayload(adjuntos[0])) &&
         (adjuntos.size() < 2 || validAdjuntoPayload(adjuntos[1]));
+    }
+
+    function validOptionalGastoSyncMetadata(data) {
+      return (!('sync_status' in data) || validGastoSyncStatus(data.sync_status)) &&
+        (!('sync_error' in data) || validOptionalString(data.sync_error)) &&
+        (!('local_id' in data) || validRequiredString(data.local_id)) &&
+        (!('remote_id' in data) || validRequiredString(data.remote_id));
     }
 
     function validGastoPayload(rendicionId, gastoId) {
@@ -396,6 +415,7 @@ service cloud.firestore {
         validRequiredString(request.resource.data.tipo_gasto_nombre) &&
         validRequiredString(request.resource.data.tipo_gasto_cuenta_contable) &&
         validPositiveNumber(request.resource.data.monto) &&
+        validOptionalGastoSyncMetadata(request.resource.data) &&
         validAdjuntosPayload(request.resource.data.adjuntos) &&
         hasNormalizedGastoOwner(request.resource.data);
     }

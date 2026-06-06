@@ -4,6 +4,7 @@ import { AppTopbar } from '../components/AppTopbar';
 import { RendicionStatusBadge } from '../components/StatusBadges';
 import { useAdminRendiciones } from '../hooks/useAdminRendiciones';
 import type { AdminEstadoFilter } from '../types/admin';
+import { parseFiniteAmount } from '../utils/amount';
 import { formatDisplayDate } from '../utils/date';
 import { formatCurrency, formatTipoRendicionNombre } from '../utils/format';
 import { getRendicionOwnerLabel } from '../utils/rendicionOwner';
@@ -160,8 +161,8 @@ export function AdminPage() {
     const titleFilter = normalizeFilterText(listFilters.title.trim());
     const statusFilter =
       estado === 'TODAS' ? normalizeAdminEstadoFilter(listFilters.status) : '';
-    const minAmount = listFilters.amountMin === '' ? null : Number(listFilters.amountMin);
-    const maxAmount = listFilters.amountMax === '' ? null : Number(listFilters.amountMax);
+    const minAmount = parseFiniteAmount(listFilters.amountMin);
+    const maxAmount = parseFiniteAmount(listFilters.amountMax);
 
     return rendiciones.filter((rendicion) => {
       const owner = normalizeFilterText(getRendicionOwnerLabel(rendicion));
@@ -193,11 +194,11 @@ export function AdminPage() {
         return false;
       }
 
-      if (minAmount !== null && Number.isFinite(minAmount) && amount < minAmount) {
+      if (minAmount !== null && amount < minAmount) {
         return false;
       }
 
-      if (maxAmount !== null && Number.isFinite(maxAmount) && amount > maxAmount) {
+      if (maxAmount !== null && amount > maxAmount) {
         return false;
       }
 

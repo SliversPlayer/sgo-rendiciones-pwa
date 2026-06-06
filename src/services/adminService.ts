@@ -16,6 +16,7 @@ import type {
   AdminRendicionDetalle,
 } from '../types/admin';
 import type { RendicionEstado } from '../types/rendicion';
+import { parsePositiveFiniteAmount } from '../utils/amount';
 import { nowIso } from '../utils/date';
 import { firestoreDb } from './firebase/firebase';
 
@@ -112,6 +113,8 @@ function normalizeAdjunto(data: Partial<AdminAdjunto>): AdminAdjunto {
 }
 
 function normalizeGasto(id: string, data: Partial<AdminGasto>): AdminGasto {
+  const monto = parsePositiveFiniteAmount(data.monto) ?? 0;
+
   return {
     id,
     rendicion_id: data.rendicion_id ?? '',
@@ -128,7 +131,7 @@ function normalizeGasto(id: string, data: Partial<AdminGasto>): AdminGasto {
     tipo_gasto_id: data.tipo_gasto_id ?? '',
     tipo_gasto_nombre: data.tipo_gasto_nombre ?? '',
     tipo_gasto_cuenta_contable: data.tipo_gasto_cuenta_contable ?? '',
-    monto: data.monto ?? 0,
+    monto,
     adjuntos: Array.isArray(data.adjuntos) ? data.adjuntos.map(normalizeAdjunto) : [],
   };
 }

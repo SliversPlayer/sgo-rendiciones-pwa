@@ -9,12 +9,25 @@ import type { Gasto } from '../types/gasto';
 import { formatDisplayDate } from '../utils/date';
 import { formatTipoRendicionNombre } from '../utils/format';
 
+const PENDING_GASTOS_MESSAGE =
+  'Hay gastos pendientes de sincronizar. Espera o reintenta antes de enviar la rendicion.';
+
 export function RendicionDetallePage() {
   const { id: rendicionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isOnline = useOnlineStatus();
-  const { rendicion, gastos, isLoading, error, isRendicionValida, isEditable, removeGasto, reload } =
-    useRendicionDetalle(rendicionId ?? '');
+  const {
+    rendicion,
+    gastos,
+    isLoading,
+    error,
+    isRendicionValida,
+    hasPendingGastoSync,
+    isEditable,
+    removeGasto,
+    retryGastoSync,
+    reload,
+  } = useRendicionDetalle(rendicionId ?? '');
   const { isSending, syncError, syncSuccess, send } = useRendicionSync();
 
   if (!rendicionId) {
@@ -87,6 +100,9 @@ export function RendicionDetallePage() {
       {error ? <p className="notice notice-error">{error}</p> : null}
       {syncError ? <p className="notice notice-error">{syncError}</p> : null}
       {syncSuccess ? <p className="notice notice-success">{syncSuccess}</p> : null}
+      {hasPendingGastoSync ? (
+        <p className="notice notice-warning">{PENDING_GASTOS_MESSAGE}</p>
+      ) : null}
       {isLoading ? <p className="notice">Cargando rendicion local...</p> : null}
 
       {!isLoading && !rendicion ? (
@@ -164,6 +180,7 @@ export function RendicionDetallePage() {
             gastos={gastos}
             onEdit={(gasto) => navigate(`/rendiciones/${rendicionId}/gastos/${gasto.id}`)}
             onDelete={handleDelete}
+            onRetrySync={(gasto) => void retryGastoSync(gasto)}
             readOnly={!isEditable}
           />
         </section>

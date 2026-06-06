@@ -190,7 +190,35 @@ class SgoRendicionesDatabase extends Dexie {
           if (['PENDIENTE_ENVIO', 'ENVIANDO', 'ERROR'].includes(rendicion.estado as string)) {
             rendicion.estado = 'BORRADOR';
             rendicion.sync_status =
-              rendicion.sync_status === 'SYNCED' ? 'PENDING_UPDATE' : rendicion.sync_status;
+            rendicion.sync_status === 'SYNCED' ? 'PENDING_UPDATE' : rendicion.sync_status;
+          }
+        });
+      });
+
+    this.version(8)
+      .stores({
+        rendiciones:
+          'id, usuario_id, uid, estado, sync_status, tipo_rendicion_id, fecha_creacion, fecha_actualizacion, fecha_envio, last_synced_at',
+        gastos:
+          'id, rendicion_id, usuario_id, uid, sync_status, local_id, remote_id, fecha, centro_negocio_id, tipo_documento_id, tipo_gasto_id',
+        adjuntos: 'id, gasto_id, storagePath',
+        centros_negocio: 'id, codigo, activo, nombre',
+        tipos_documento: 'id, codigo, cuenta_contable, activo, nombre',
+        tipos_rendicion: 'id, cuenta_contable, activo, nombre',
+        tipos_gasto: 'id, cuenta_contable, activo, nombre',
+      })
+      .upgrade(async (transaction) => {
+        await transaction.table<Gasto, string>('gastos').toCollection().modify((gasto) => {
+          if (!gasto.sync_status) {
+            gasto.sync_status = 'synced';
+          }
+
+          if (!gasto.local_id) {
+            gasto.local_id = gasto.id;
+          }
+
+          if (!gasto.remote_id && gasto.sync_status === 'synced') {
+            gasto.remote_id = gasto.id;
           }
         });
       });

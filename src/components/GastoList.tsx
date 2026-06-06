@@ -1,14 +1,26 @@
 import type { Gasto } from '../types/gasto';
 import { formatCurrency } from '../utils/format';
+import {
+  getGastoSyncLabel,
+  getGastoSyncStatus,
+  getGastoSyncTone,
+} from '../utils/gastoSync';
 
 interface GastoListProps {
   gastos: Gasto[];
   onEdit: (gasto: Gasto) => void;
   onDelete: (gasto: Gasto) => void;
+  onRetrySync?: (gasto: Gasto) => void;
   readOnly?: boolean;
 }
 
-export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoListProps) {
+export function GastoList({
+  gastos,
+  onEdit,
+  onDelete,
+  onRetrySync,
+  readOnly = false,
+}: GastoListProps) {
   if (gastos.length === 0) {
     return (
       <div className="empty-state">
@@ -23,6 +35,7 @@ export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoL
       {gastos.map((gasto) => {
         const centroNegocioNombre =
           gasto.centro_negocio_nombre ?? gasto.centro_costo_nombre ?? 'Sin centro de negocio';
+        const syncStatus = getGastoSyncStatus(gasto);
 
         return (
           <article className="gasto-item" key={gasto.id}>
@@ -38,8 +51,30 @@ export function GastoList({ gastos, onEdit, onDelete, readOnly = false }: GastoL
               <strong className="amount-value">{formatCurrency(gasto.monto)}</strong>
             </div>
 
+            <div className="gasto-sync-row">
+              <span className={`sync-badge sync-${getGastoSyncTone(gasto)}`}>
+                <span className="sync-badge-dot" aria-hidden="true" />
+                {getGastoSyncLabel(gasto)}
+              </span>
+            </div>
+
+            {syncStatus === 'error' && gasto.sync_error ? (
+              <p className="notice notice-error compact-notice gasto-sync-error">
+                {gasto.sync_error}
+              </p>
+            ) : null}
+
             {!readOnly ? (
               <div className="card-actions compact-actions">
+                {syncStatus === 'error' && onRetrySync ? (
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => onRetrySync(gasto)}
+                  >
+                    Reintentar
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="button button-secondary"

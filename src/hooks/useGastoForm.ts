@@ -10,6 +10,10 @@ import {
   PDF_MIME_TYPE,
   validatePdfSize,
 } from '../utils/attachmentValidation';
+import {
+  INVALID_POSITIVE_AMOUNT_MESSAGE,
+  parsePositiveFiniteAmount,
+} from '../utils/amount';
 import { createId } from '../utils/id';
 
 const MAX_ADJUNTOS = MAX_ADJUNTOS_PER_GASTO;
@@ -22,7 +26,7 @@ interface AdjuntoDraft extends AdjuntoInput {
 
 interface UseGastoFormParams {
   initialGasto?: GastoConAdjuntos;
-  onSubmit: (data: GastoFormData, adjuntos: AdjuntoInput[]) => Promise<void>;
+  onSubmit: (data: GastoFormData, adjuntos: AdjuntoInput[], localId: string) => Promise<void>;
 }
 
 function todayInputDate(): string {
@@ -82,6 +86,9 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
   const [data, setData] = useState<GastoFormData>(() => getInitialData(initialGasto));
   const [adjuntos, setAdjuntos] = useState<AdjuntoDraft[]>(() =>
     getInitialAdjuntos(initialGasto),
+  );
+  const [localGastoId] = useState(() =>
+    initialGasto?.gasto.local_id ?? initialGasto?.gasto.id ?? createId(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -220,14 +227,8 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
       return 'Selecciona un tipo de gasto.';
     }
 
-    const monto = Number(data.monto);
-
-    if (!data.monto.trim() || !Number.isFinite(monto) || monto <= 0) {
-      return 'Ingresa un monto mayor a 0.';
-    }
-
-    if (adjuntos.length < 1) {
-      return 'Agrega al menos 1 adjunto.';
+    if (parsePositiveFiniteAmount(data.monto) === null) {
+      return INVALID_POSITIVE_AMOUNT_MESSAGE;
     }
 
     if (adjuntos.length > MAX_ADJUNTOS) {
@@ -243,6 +244,10 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isSaving || isProcessingFiles) {
+      return;
+    }
 
     const validationError = validate();
     if (validationError) {
@@ -267,6 +272,7 @@ export function useGastoForm({ initialGasto, onSubmit }: UseGastoFormParams) {
             uploadedAt,
           }),
         ),
+        localGastoId,
       );
     } catch (error) {
       setFormError(

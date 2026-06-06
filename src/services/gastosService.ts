@@ -21,11 +21,16 @@ import { createId } from '../utils/id';
 import { assertRendicionBelongsToUser } from './rendicionesService';
 import type { Rendicion, RendicionSyncStatus } from '../types/rendicion';
 import { isRendicionEditable } from '../utils/rendicionStatus';
+import {
+  INVALID_POSITIVE_AMOUNT_MESSAGE,
+  parsePositiveFiniteAmount,
+} from '../utils/amount';
 
 async function buildGasto(
   rendicion: Rendicion,
   data: GastoFormData,
   current?: Gasto,
+  localId?: string,
 ): Promise<Gasto> {
   const [centroNegocio, tipoDocumento, tipoGasto] = await Promise.all([
     getCentroNegocioById(data.centro_negocio_id),
@@ -46,15 +51,17 @@ async function buildGasto(
 
   const timestamp = nowIso();
   const ownerId = rendicion.usuario_id || rendicion.uid;
+  const monto = parsePositiveFiniteAmount(data.monto);
 
-  const monto = Number(data.monto);
-
-  if (!Number.isFinite(monto) || monto <= 0) {
-    throw new Error('Ingresa un monto mayor a 0.');
+  if (monto === null) {
+    throw new Error(INVALID_POSITIVE_AMOUNT_MESSAGE);
   }
 
+  const gastoId = current?.id ?? localId ?? createId();
+  const localGastoId = current?.local_id ?? gastoId;
+
   return {
-    id: current?.id ?? createId(),
+    id: gastoId,
     rendicion_id: rendicion.id,
     uid: ownerId,
     usuario_id: ownerId,
@@ -73,6 +80,10 @@ async function buildGasto(
     tipo_gasto_nombre: tipoGasto.nombre,
     tipo_gasto_cuenta_contable: tipoGasto.cuenta_contable,
     monto,
+    sync_status: 'local',
+    sync_error: undefined,
+    local_id: localGastoId,
+    remote_id: current?.remote_id,
     fecha_creacion: current?.fecha_creacion ?? timestamp,
     fecha_actualizacion: timestamp,
   };
@@ -190,11 +201,21 @@ export async function createGasto(
   data: GastoFormData,
   adjuntos: AdjuntoInput[],
   usuarioId: string,
+  localId?: string,
 ): Promise<GastoConAdjuntos> {
   const rendicion = await assertRendicionEditable(rendicionId, usuarioId);
   validateAdjuntos(adjuntos);
+  const requestedLocalId = localId?.trim() || createId();
+  const existingGasto =
+    await gastosTable.where('local_id').equals(requestedLocalId).first() ??
+    await gastosTable.get(requestedLocalId);
 
-  const gasto = await buildGasto(rendicion, data);
+  if (existingGasto?.rendicion_id === rendicionId) {
+    const existingAdjuntos = await adjuntosTable.where('gasto_id').equals(existingGasto.id).toArray();
+    return { gasto: existingGasto, adjuntos: existingAdjuntos };
+  }
+
+  const gasto = await buildGasto(rendicion, data, undefined, requestedLocalId);
   const storedAdjuntos = buildAdjuntos(gasto.id, adjuntos);
 
   await db.transaction('rw', rendicionesTable, gastosTable, adjuntosTable, async () => {

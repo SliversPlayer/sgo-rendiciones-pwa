@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createGasto, getGastoConAdjuntos, updateGasto } from '../services/gastosService';
 import { getRendicionById } from '../services/rendicionesService';
-import { syncRendicionDraft } from '../services/syncService';
+import { syncGastoDraft } from '../services/syncService';
 import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gasto';
 import type { Rendicion } from '../types/rendicion';
 import { isRendicionEditable } from '../utils/rendicionStatus';
@@ -62,7 +62,7 @@ export function useGastoEditor(rendicionId: string, gastoId?: string) {
     void loadEditor();
   }, [loadEditor]);
 
-  const saveGasto = async (data: GastoFormData, adjuntos: AdjuntoInput[]) => {
+  const saveGasto = async (data: GastoFormData, adjuntos: AdjuntoInput[], localId?: string) => {
     if (!usuarioId) {
       throw new Error('Debes iniciar sesion para guardar gastos.');
     }
@@ -71,21 +71,27 @@ export function useGastoEditor(rendicionId: string, gastoId?: string) {
       throw new Error('Esta rendicion ya fue enviada y esta bloqueada para edicion.');
     }
 
+    const usuarioNombre = userProfile?.nombre ?? currentUser?.displayName;
+
     if (gastoId) {
-      await updateGasto(gastoId, data, adjuntos, usuarioId);
-      await syncRendicionDraft(
+      const storedGasto = await updateGasto(gastoId, data, adjuntos, usuarioId);
+
+      void syncGastoDraft(
         rendicionId,
+        storedGasto.gasto.id,
         currentUser,
-        userProfile?.nombre ?? currentUser?.displayName,
+        usuarioNombre,
       );
       return;
     }
 
-    await createGasto(rendicionId, data, adjuntos, usuarioId);
-    await syncRendicionDraft(
+    const storedGasto = await createGasto(rendicionId, data, adjuntos, usuarioId, localId);
+
+    void syncGastoDraft(
       rendicionId,
+      storedGasto.gasto.id,
       currentUser,
-      userProfile?.nombre ?? currentUser?.displayName,
+      usuarioNombre,
     );
   };
 

@@ -5,9 +5,11 @@ import type { User } from 'firebase/auth';
 import { adjuntosTable, gastosTable, rendicionesTable } from './db';
 import { firestoreDb, firebaseStorage } from './firebase/firebase';
 import { assertRendicionBelongsToUser } from './rendicionesService';
-import type { Adjunto, Gasto } from '../types/gasto';
+import type { Adjunto, Gasto, GastoSyncStatus } from '../types/gasto';
 import type { Rendicion, RendicionSyncStatus } from '../types/rendicion';
+import { isPositiveFiniteAmount } from '../utils/amount';
 import { nowIso } from '../utils/date';
+import { getGastoSyncStatus, isGastoPendingSync } from '../utils/gastoSync';
 
 interface UploadedAdjunto {
   id: string;
@@ -104,6 +106,18 @@ function isValidDownloadURL(value?: string): value is string {
   }
 }
 
+function notifyRendicionLocalChange(rendicionId: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent('sgo:rendicion-local-change', {
+      detail: { rendicionId },
+    }),
+  );
+}
+
 function validateGasto(gasto: Gasto, adjuntos: Adjunto[]): string | null {
   const centroNegocioId = gasto.centro_negocio_id ?? gasto.centro_costo_id;
   const centroNegocioNombre = gasto.centro_negocio_nombre ?? gasto.centro_costo_nombre;
@@ -138,7 +152,7 @@ function validateGasto(gasto: Gasto, adjuntos: Adjunto[]): string | null {
     return `El gasto "${gasto.glosa}" no tiene tipo de gasto completo.`;
   }
 
-  if (!Number.isFinite(gasto.monto) || gasto.monto <= 0) {
+  if (!isPositiveFiniteAmount(gasto.monto)) {
     return `El gasto "${gasto.glosa}" debe tener monto mayor a 0.`;
   }
 
@@ -186,6 +200,12 @@ function validateRendicionForSend(
     !rendicion.tipo_rendicion_cuenta_contable
   ) {
     throw new Error('Selecciona un tipo de rendicion antes de enviar.');
+  }
+
+  if (gastos.some(({ gasto }) => isGastoPendingSync(gasto))) {
+    throw new Error(
+      'Hay gastos pendientes de sincronizar. Espera o reintenta antes de enviar la rendicion.',
+    );
   }
 
   const invalidGasto = gastos
@@ -272,6 +292,75 @@ async function updateLocalAdjuntosMetadata(uploadedByGasto: Map<string, Uploaded
         uploadedAt: adjunto.uploadedAt,
       });
     }
+  }
+}
+
+async function updateGastoSyncStatus(
+  gastoId: string,
+  status: GastoSyncStatus,
+  syncError?: string,
+): Promise<void> {
+  const current = await gastosTable.get(gastoId);
+
+  if (!current) {
+    return;
+  }
+
+  await gastosTable.update(gastoId, {
+    sync_status: status,
+    sync_error: syncError,
+    local_id: current.local_id ?? current.id,
+    remote_id: status === 'synced' ? current.id : current.remote_id,
+  });
+  notifyRendicionLocalChange(current.rendicion_id);
+}
+
+async function markPendingGastosSyncing(rendicionId: string, gastos: Gasto[]): Promise<void> {
+  const pendingGastos = gastos.filter(isGastoPendingSync);
+
+  for (const gasto of pendingGastos) {
+    await gastosTable.update(gasto.id, {
+      sync_status: 'syncing',
+      sync_error: undefined,
+      local_id: gasto.local_id ?? gasto.id,
+    });
+  }
+
+  if (pendingGastos.length > 0) {
+    notifyRendicionLocalChange(rendicionId);
+  }
+}
+
+async function markGastosSynced(rendicionId: string, gastos: Gasto[]): Promise<void> {
+  for (const gasto of gastos) {
+    await gastosTable.update(gasto.id, {
+      sync_status: 'synced',
+      sync_error: undefined,
+      local_id: gasto.local_id ?? gasto.id,
+      remote_id: gasto.id,
+    });
+  }
+
+  if (gastos.length > 0) {
+    notifyRendicionLocalChange(rendicionId);
+  }
+}
+
+async function markPendingGastosSyncError(rendicionId: string, error: unknown): Promise<void> {
+  const message = getSyncErrorMessage(error);
+  const gastos = await gastosTable.where('rendicion_id').equals(rendicionId).toArray();
+  const pendingGastos = gastos.filter((gasto) => getGastoSyncStatus(gasto) !== 'synced');
+
+  for (const gasto of pendingGastos) {
+    await gastosTable.update(gasto.id, {
+      sync_status: 'error',
+      sync_error: message,
+      local_id: gasto.local_id ?? gasto.id,
+    });
+  }
+
+  if (pendingGastos.length > 0) {
+    notifyRendicionLocalChange(rendicionId);
   }
 }
 
@@ -362,6 +451,9 @@ function buildRemoteGastoPayload(
     tipo_gasto_nombre: remoteGasto.tipo_gasto_nombre,
     tipo_gasto_cuenta_contable: remoteGasto.tipo_gasto_cuenta_contable,
     monto: remoteGasto.monto,
+    sync_status: 'synced',
+    local_id: remoteGasto.local_id ?? remoteGasto.id,
+    remote_id: remoteGasto.id,
     fecha_creacion: remoteGasto.fecha_creacion ?? remoteGasto.fecha,
     fecha_actualizacion: remoteGasto.fecha_actualizacion ?? remoteGasto.fecha,
     adjuntos,
@@ -376,6 +468,7 @@ async function markRendicionSyncError(rendicionId: string, error: unknown): Prom
     sync_status: getFailedSyncStatus(current?.sync_status),
     sync_error: getSyncErrorMessage(error),
   });
+  notifyRendicionLocalChange(rendicionId);
 }
 
 async function markRendicionSynced(
@@ -401,6 +494,7 @@ async function markRendicionSynced(
   }
 
   await rendicionesTable.update(rendicionId, updates);
+  notifyRendicionLocalChange(rendicionId);
 }
 
 async function deleteRemoteRendicion(rendicion: Rendicion): Promise<void> {
@@ -462,6 +556,8 @@ async function persistRendicionSnapshot(
   const uploadedByGasto = new Map<string, UploadedAdjunto[]>();
   const rendicionRef = doc(firestoreDb, 'rendiciones', rendicion.id);
 
+  await markPendingGastosSyncing(rendicion.id, gastos.map(({ gasto }) => gasto));
+
   for (const { gasto, adjuntos } of gastos) {
     uploadedByGasto.set(
       gasto.id,
@@ -500,6 +596,7 @@ async function persistRendicionSnapshot(
 
   await batch.commit();
   await updateLocalAdjuntosMetadata(uploadedByGasto);
+  await markGastosSynced(rendicion.id, gastos.map(({ gasto }) => gasto));
   await markRendicionSynced(rendicion.id, estado, fechaEnvio);
 }
 
@@ -536,6 +633,27 @@ export async function syncRendicionDraft(
     await persistRendicionSnapshot(rendicionId, user, usuarioNombre);
   } catch (error) {
     await markRendicionSyncError(rendicionId, error);
+    await markPendingGastosSyncError(rendicionId, error);
+  }
+}
+
+export async function syncGastoDraft(
+  rendicionId: string,
+  gastoId: string,
+  user: User | null,
+  usuarioNombre?: string | null,
+): Promise<void> {
+  if (!user || !navigator.onLine) {
+    return;
+  }
+
+  await updateGastoSyncStatus(gastoId, 'syncing');
+
+  try {
+    await persistRendicionSnapshot(rendicionId, user, usuarioNombre);
+  } catch (error) {
+    await markRendicionSyncError(rendicionId, error);
+    await markPendingGastosSyncError(rendicionId, error);
   }
 }
 
@@ -554,6 +672,7 @@ export async function syncPendingUserData(
       await persistRendicionSnapshot(rendicion.id, user, usuarioNombre);
     } catch (error) {
       await markRendicionSyncError(rendicion.id, error);
+      await markPendingGastosSyncError(rendicion.id, error);
     }
   }
 }

@@ -1169,6 +1169,17 @@ button {
   font-weight: 800;
 }
 
+.gasto-sync-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.gasto-sync-error {
+  margin: 10px 0 0;
+}
+
 .amount-value {
   justify-self: start;
   border-radius: 8px;

@@ -12,6 +12,7 @@ import type { Adjunto, Gasto } from '../types/gasto';
 import { nowIso } from '../utils/date';
 import { formatTipoRendicionNombre } from '../utils/format';
 import { createId } from '../utils/id';
+import { isPositiveFiniteAmount, parsePositiveFiniteAmount } from '../utils/amount';
 import {
   getRendicionOwnerId,
   isRendicionOwnedByUser,
@@ -217,6 +218,8 @@ function normalizeRemoteGasto(
   remote: RemoteGastoData,
   rendicion: Rendicion,
 ): Gasto {
+  const monto = parsePositiveFiniteAmount(remote.monto) ?? 0;
+
   return {
     id,
     rendicion_id: rendicion.id,
@@ -237,7 +240,11 @@ function normalizeRemoteGasto(
     tipo_gasto_nombre: remote.tipo_gasto_nombre ?? '',
     tipo_gasto_cuenta_contable:
       remote.tipo_gasto_cuenta_contable ?? remote.tipo_gasto_codigo ?? '',
-    monto: Number(remote.monto ?? 0),
+    monto,
+    sync_status: 'synced',
+    sync_error: undefined,
+    local_id: remote.local_id ?? id,
+    remote_id: remote.remote_id ?? id,
     fecha_creacion: remote.fecha_creacion ?? rendicion.fecha_creacion,
     fecha_actualizacion: remote.fecha_actualizacion ?? rendicion.fecha_actualizacion,
     centro_costo_id: remote.centro_costo_id ?? remote.centro_negocio_id,
@@ -373,7 +380,10 @@ export async function getRendicionesStats(
     totalEnviadas: rendiciones.filter((rendicion) => rendicion.estado === 'ENVIADA').length,
     totalAprobadas: rendiciones.filter((rendicion) => rendicion.estado === 'APROBADA').length,
     totalRechazadas: rendiciones.filter((rendicion) => rendicion.estado === 'RECHAZADA').length,
-    montoTotalAcumulado: gastos.reduce((total, gasto) => total + gasto.monto, 0),
+    montoTotalAcumulado: gastos.reduce(
+      (total, gasto) => total + (isPositiveFiniteAmount(gasto.monto) ? gasto.monto : 0),
+      0,
+    ),
   };
 }
 

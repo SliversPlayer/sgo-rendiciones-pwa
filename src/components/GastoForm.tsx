@@ -3,7 +3,7 @@ import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gas
 
 interface GastoFormProps {
   initialGasto?: GastoConAdjuntos;
-  onSubmit: (data: GastoFormData, adjuntos: AdjuntoInput[]) => Promise<void>;
+  onSubmit: (data: GastoFormData, adjuntos: AdjuntoInput[], localId: string) => Promise<void>;
   onCancel: () => void;
 }
 

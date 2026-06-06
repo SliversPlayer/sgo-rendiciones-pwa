@@ -1,3 +1,5 @@
+export type GastoSyncStatus = 'local' | 'syncing' | 'synced' | 'error';
+
 export interface Gasto {
   id: string;
   rendicion_id: string;
@@ -18,6 +20,10 @@ export interface Gasto {
   tipo_gasto_nombre: string;
   tipo_gasto_cuenta_contable: string;
   monto: number;
+  sync_status?: GastoSyncStatus;
+  sync_error?: string;
+  local_id?: string;
+  remote_id?: string;
   fecha_creacion?: string;
   fecha_actualizacion?: string;
   centro_costo_id?: string;

@@ -135,6 +135,14 @@ button {
   cursor: pointer;
 }
 
+.topbar-link-icon {
+  display: none;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  stroke-width: 2.4;
+}
+
 .topbar-link:hover,
 .topbar-link.is-active {
   border-color: #bfdbfe;
@@ -447,6 +455,20 @@ button {
   align-items: end;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 14px;
+}
+
+.dashboard-create-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dashboard-create-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  stroke-width: 2.4;
 }
 
 .dashboard-filter-panel,
@@ -2317,6 +2339,157 @@ button {
 
   .primary-first-on-stack .button-primary {
     order: -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-shell {
+    padding: 8px 10px 80px;
+  }
+
+  .dashboard-shell .app-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin: 0 0 20px;
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  .dashboard-shell .brand-button {
+    gap: 8px;
+    padding: 4px;
+  }
+
+  .dashboard-shell .brand-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+  }
+
+  .dashboard-shell .brand-button strong {
+    font-size: 0.98rem;
+  }
+
+  .dashboard-shell .brand-button small {
+    font-size: 0.76rem;
+  }
+
+  .dashboard-shell .topbar-actions {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .dashboard-shell .sync-status-pill {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-color: transparent;
+    border-radius: 10px;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .dashboard-shell .sync-status-pill span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .dashboard-shell .sync-status-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .dashboard-shell .topbar-logout-button {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .dashboard-shell .topbar-logout-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .dashboard-shell .topbar-link-icon {
+    display: block;
+  }
+
+  .dashboard-section {
+    padding-top: 0;
+  }
+
+  .dashboard-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+  }
+
+  .dashboard-toolbar h2 {
+    font-size: 1.55rem;
+  }
+
+  .dashboard-create-button {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    border-radius: 12px;
+    padding: 0;
+  }
+
+  .dashboard-create-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .dashboard-create-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dashboard-filter-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 0.42fr);
+    gap: 10px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    padding: 10px;
+  }
+
+  .dashboard-filter-panel label > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .dashboard-filter-panel input,
+  .dashboard-filter-panel select {
+    min-height: 46px;
+    border-radius: 10px;
+    padding: 11px 12px;
+  }
+
+  .dashboard-stats-grid {
+    margin-bottom: 22px;
   }
 }
 

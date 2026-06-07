@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminUser, isSuperAdminUser } from '../utils/roles';
@@ -41,8 +42,15 @@ export function AppTopbar({ currentSection = 'dashboard' }: AppTopbarProps) {
             Superadmin
           </button>
         ) : null}
-        <button type="button" className="topbar-link" onClick={() => void logout()}>
-          Salir
+        <button
+          type="button"
+          className="topbar-link topbar-logout-button"
+          onClick={() => void logout()}
+          aria-label="Cerrar sesion"
+          title="Cerrar sesion"
+        >
+          <LogOut className="topbar-link-icon" aria-hidden="true" />
+          <span>Salir</span>
         </button>
       </div>
     </nav>

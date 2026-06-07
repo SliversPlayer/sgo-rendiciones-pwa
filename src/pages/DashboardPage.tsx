@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, CircleX, PencilLine, Send, type LucideIcon } from 'lucide-react';
+import {
+  ChevronRight,
+  CircleX,
+  PencilLine,
+  Plus,
+  Send,
+  type LucideIcon,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AppTopbar } from '../components/AppTopbar';
 import { RendicionCard } from '../components/RendicionCard';
 import { RendicionForm } from '../components/RendicionForm';
-import { useAuth } from '../hooks/useAuth';
 import { useRendiciones } from '../hooks/useRendiciones';
 import type { Rendicion, RendicionEstado, RendicionFormData } from '../types/rendicion';
 import { getEstadoLabel, isRendicionEditable } from '../utils/rendicionStatus';
@@ -53,7 +59,6 @@ function matchesSearch(rendicion: Rendicion, search: string): boolean {
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
   const {
     rendiciones,
     cardSummaries,
@@ -142,21 +147,8 @@ export function DashboardPage() {
   };
 
   return (
-    <main className="app-shell">
+    <main className="app-shell dashboard-shell">
       <AppTopbar currentSection="dashboard" />
-
-      <header className="app-header dashboard-hero">
-        <div>
-          <p className="eyebrow">SGO Rendiciones PWA</p>
-          <h1>SGO Rendiciones</h1>
-          <p className="header-copy">
-            Gestiona rendiciones offline con catalogos estructurados y envio individual.
-          </p>
-          <p className="demo-user">
-            {userProfile?.nombre ?? 'Usuario'} - {userProfile?.email}
-          </p>
-        </div>
-      </header>
 
       {viewMode === 'create' ? (
         <RendicionForm onSubmit={handleCreate} onCancel={showList} />
@@ -174,16 +166,42 @@ export function DashboardPage() {
         <section className="dashboard-section" aria-labelledby="rendiciones-title">
           <div className="section-heading with-action dashboard-toolbar">
             <div>
-              <p className="eyebrow">Dashboard</p>
               <h2 id="rendiciones-title">Mis rendiciones</h2>
             </div>
             <button
               type="button"
-              className="button button-primary"
+              className="button button-primary dashboard-create-button"
               onClick={() => setViewMode('create')}
+              aria-label="Crear nueva rendicion"
             >
-              Nueva rendicion
+              <Plus className="dashboard-create-icon" aria-hidden="true" />
+              <span>Nueva rendicion</span>
             </button>
+          </div>
+
+          <div className="filters-bar dashboard-filter-panel" aria-label="Filtros de rendiciones">
+            <label>
+              <span>Buscar</span>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Titulo, glosa, tipo o estado"
+              />
+            </label>
+            <label>
+              <span>Estado</span>
+              <select
+                value={estadoFilter}
+                onChange={(event) => setEstadoFilter(event.target.value as EstadoFilter)}
+              >
+                {estadoOptions.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado === 'TODAS' ? 'Todos' : getEstadoLabel(estado)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="stats-grid dashboard-stats-grid" aria-label="Metricas operativas de rendiciones">
@@ -211,31 +229,6 @@ export function DashboardPage() {
                 </button>
               );
             })}
-          </div>
-
-          <div className="filters-bar dashboard-filter-panel" aria-label="Filtros de rendiciones">
-            <label>
-              <span>Buscar</span>
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Titulo, glosa, tipo o estado"
-              />
-            </label>
-            <label>
-              <span>Estado</span>
-              <select
-                value={estadoFilter}
-                onChange={(event) => setEstadoFilter(event.target.value as EstadoFilter)}
-              >
-                {estadoOptions.map((estado) => (
-                  <option key={estado} value={estado}>
-                    {estado === 'TODAS' ? 'Todos' : getEstadoLabel(estado)}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
 
           {error ? <p className="notice notice-error">{error}</p> : null}

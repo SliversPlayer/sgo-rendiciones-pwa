@@ -8,6 +8,7 @@ import { isPositiveFiniteAmount } from '../utils/amount';
 import { isGastoPendingSync } from '../utils/gastoSync';
 import { isRendicionEditable } from '../utils/rendicionStatus';
 import { useAuth } from './useAuth';
+import { useSyncStatus } from './useSyncStatus';
 
 function isGastoValidoParaEnvio({ gasto, adjuntos }: GastoConAdjuntos): boolean {
   const centroNegocioId = gasto.centro_negocio_id ?? gasto.centro_costo_id;
@@ -50,6 +51,7 @@ function isRendicionValidaParaEnvio(
 
 export function useRendicionDetalle(rendicionId: string) {
   const { currentUser, userProfile } = useAuth();
+  const { trackSyncOperation } = useSyncStatus();
   const [rendicion, setRendicion] = useState<Rendicion | null>(null);
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isRendicionValida, setIsRendicionValida] = useState(false);
@@ -160,12 +162,14 @@ export function useRendicionDetalle(rendicionId: string) {
           item.id === gasto.id ? { ...item, sync_status: 'syncing', sync_error: undefined } : item,
         ),
       );
-      await syncGastoDraft(
-        gasto.rendicion_id,
-        gasto.id,
-        currentUser,
-        userProfile?.nombre ?? currentUser.displayName,
-      );
+      await trackSyncOperation(async () => {
+        await syncGastoDraft(
+          gasto.rendicion_id,
+          gasto.id,
+          currentUser,
+          userProfile?.nombre ?? currentUser.displayName,
+        );
+      });
       await loadDetalle();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo reintentar la sincronizacion.');

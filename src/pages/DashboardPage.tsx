@@ -45,7 +45,16 @@ function matchesSearch(rendicion: Rendicion, search: string): boolean {
 export function DashboardPage() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { rendiciones, stats, isLoading, error, addRendicion, saveRendicion, removeRendicion } =
+  const {
+    rendiciones,
+    cardSummaries,
+    stats,
+    isLoading,
+    error,
+    addRendicion,
+    saveRendicion,
+    removeRendicion,
+  } =
     useRendiciones();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRendicion, setSelectedRendicion] = useState<Rendicion | null>(null);
@@ -221,6 +230,7 @@ export function DashboardPage() {
               <RendicionCard
                 key={rendicion.id}
                 rendicion={rendicion}
+                summary={cardSummaries[rendicion.id]}
                 onOpen={(item) => navigate(`/rendiciones/${item.id}`)}
                 onEdit={(item) => {
                   if (!isRendicionEditable(item)) {

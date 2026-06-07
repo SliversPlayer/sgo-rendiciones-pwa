@@ -1,10 +1,6 @@
 import type { Gasto } from '../types/gasto';
 import { formatCurrency } from '../utils/format';
-import {
-  getGastoSyncLabel,
-  getGastoSyncStatus,
-  getGastoSyncTone,
-} from '../utils/gastoSync';
+import { getGastoSyncStatus } from '../utils/gastoSync';
 
 interface GastoListProps {
   gastos: Gasto[];
@@ -50,19 +46,6 @@ export function GastoList({
               </div>
               <strong className="amount-value">{formatCurrency(gasto.monto)}</strong>
             </div>
-
-            <div className="gasto-sync-row">
-              <span className={`sync-badge sync-${getGastoSyncTone(gasto)}`}>
-                <span className="sync-badge-dot" aria-hidden="true" />
-                {getGastoSyncLabel(gasto)}
-              </span>
-            </div>
-
-            {syncStatus === 'error' && gasto.sync_error ? (
-              <p className="notice notice-error compact-notice gasto-sync-error">
-                {gasto.sync_error}
-              </p>
-            ) : null}
 
             {!readOnly ? (
               <div className="card-actions compact-actions">

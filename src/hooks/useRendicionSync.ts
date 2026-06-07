@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { sendRendicion } from '../services/syncService';
 import { useAuth } from './useAuth';
+import { useSyncStatus } from './useSyncStatus';
 
 export function useRendicionSync() {
   const { currentUser, userProfile } = useAuth();
+  const { trackSyncOperation } = useSyncStatus();
   const [isSending, setIsSending] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
@@ -20,7 +22,9 @@ export function useRendicionSync() {
       setIsSending(true);
       setSyncError(null);
       setSyncSuccess(null);
-      await sendRendicion(rendicionId, currentUser, userProfile?.nombre);
+      await trackSyncOperation(async () => {
+        await sendRendicion(rendicionId, currentUser, userProfile?.nombre);
+      });
       setSyncSuccess('Rendicion enviada correctamente.');
     } catch (error) {
       setSyncError(

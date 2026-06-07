@@ -1,16 +1,13 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AppTopbar } from '../components/AppTopbar';
 import { GastoList } from '../components/GastoList';
-import { RendicionStatusBadge, SyncStatusBadge } from '../components/StatusBadges';
+import { RendicionStatusBadge } from '../components/StatusBadges';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useRendicionDetalle } from '../hooks/useRendicionDetalle';
 import { useRendicionSync } from '../hooks/useRendicionSync';
 import type { Gasto } from '../types/gasto';
 import { formatDisplayDate } from '../utils/date';
 import { formatTipoRendicionNombre } from '../utils/format';
-
-const PENDING_GASTOS_MESSAGE =
-  'Hay gastos pendientes de sincronizar. Espera o reintenta antes de enviar la rendicion.';
 
 export function RendicionDetallePage() {
   const { id: rendicionId } = useParams<{ id: string }>();
@@ -22,7 +19,6 @@ export function RendicionDetallePage() {
     isLoading,
     error,
     isRendicionValida,
-    hasPendingGastoSync,
     isEditable,
     removeGasto,
     retryGastoSync,
@@ -100,9 +96,6 @@ export function RendicionDetallePage() {
       {error ? <p className="notice notice-error">{error}</p> : null}
       {syncError ? <p className="notice notice-error">{syncError}</p> : null}
       {syncSuccess ? <p className="notice notice-success">{syncSuccess}</p> : null}
-      {hasPendingGastoSync ? (
-        <p className="notice notice-warning">{PENDING_GASTOS_MESSAGE}</p>
-      ) : null}
       {isLoading ? <p className="notice">Cargando rendicion local...</p> : null}
 
       {!isLoading && !rendicion ? (
@@ -119,7 +112,6 @@ export function RendicionDetallePage() {
               <p className="eyebrow">Estado local</p>
               <div className="status-stack">
                 <RendicionStatusBadge estado={rendicion.estado} />
-                <SyncStatusBadge status={rendicion.sync_status ?? 'LOCAL'} />
               </div>
               <p className={isRendicionValida ? 'notice notice-success compact-notice' : 'notice notice-warning compact-notice'}>
                 {isRendicionValida ? 'Lista para enviar' : 'Faltan datos para enviar'}
@@ -151,10 +143,6 @@ export function RendicionDetallePage() {
             <p className="notice">
               Esta rendicion ya fue enviada y esta bloqueada para edicion.
             </p>
-          ) : null}
-
-          {rendicion.sync_error ? (
-            <p className="notice notice-error">{rendicion.sync_error}</p>
           ) : null}
 
           {rendicion.observacion_rechazo ? (

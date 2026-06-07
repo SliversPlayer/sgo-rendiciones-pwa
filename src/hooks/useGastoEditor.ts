@@ -6,9 +6,11 @@ import type { AdjuntoInput, GastoConAdjuntos, GastoFormData } from '../types/gas
 import type { Rendicion } from '../types/rendicion';
 import { isRendicionEditable } from '../utils/rendicionStatus';
 import { useAuth } from './useAuth';
+import { useSyncStatus } from './useSyncStatus';
 
 export function useGastoEditor(rendicionId: string, gastoId?: string) {
   const { currentUser, userProfile } = useAuth();
+  const { trackSyncOperation } = useSyncStatus();
   const [rendicion, setRendicion] = useState<Rendicion | null>(null);
   const [initialGasto, setInitialGasto] = useState<GastoConAdjuntos | undefined>();
   const [isLoading, setIsLoading] = useState(true);
@@ -76,23 +78,27 @@ export function useGastoEditor(rendicionId: string, gastoId?: string) {
     if (gastoId) {
       const storedGasto = await updateGasto(gastoId, data, adjuntos, usuarioId);
 
-      void syncGastoDraft(
-        rendicionId,
-        storedGasto.gasto.id,
-        currentUser,
-        usuarioNombre,
-      );
+      void trackSyncOperation(() =>
+        syncGastoDraft(
+          rendicionId,
+          storedGasto.gasto.id,
+          currentUser,
+          usuarioNombre,
+        ),
+      ).catch(() => undefined);
       return;
     }
 
     const storedGasto = await createGasto(rendicionId, data, adjuntos, usuarioId, localId);
 
-    void syncGastoDraft(
-      rendicionId,
-      storedGasto.gasto.id,
-      currentUser,
-      usuarioNombre,
-    );
+    void trackSyncOperation(() =>
+      syncGastoDraft(
+        rendicionId,
+        storedGasto.gasto.id,
+        currentUser,
+        usuarioNombre,
+      ),
+    ).catch(() => undefined);
   };
 
   return {

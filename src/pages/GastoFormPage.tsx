@@ -1,13 +1,11 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ConnectionStatus } from '../components/ConnectionStatus';
+import { AppTopbar } from '../components/AppTopbar';
 import { GastoForm } from '../components/GastoForm';
 import { useGastoEditor } from '../hooks/useGastoEditor';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export function GastoFormPage() {
   const { id: rendicionId, gastoId } = useParams<{ id: string; gastoId?: string }>();
   const navigate = useNavigate();
-  const isOnline = useOnlineStatus();
   const { rendicion, initialGasto, isEditing, isLoading, error, isEditable, saveGasto } =
     useGastoEditor(rendicionId ?? '', gastoId);
 
@@ -23,6 +21,8 @@ export function GastoFormPage() {
 
   return (
     <main className="app-shell">
+      <AppTopbar />
+
       <header className="app-header">
         <div>
           <p className="eyebrow">{isEditing ? 'Editar gasto' : 'Nuevo gasto'}</p>
@@ -31,7 +31,6 @@ export function GastoFormPage() {
             {rendicion?.glosa_grupo ?? 'Los comprobantes quedaran guardados offline.'}
           </p>
         </div>
-        <ConnectionStatus isOnline={isOnline} />
       </header>
 
       {error ? <p className="notice notice-error">{error}</p> : null}

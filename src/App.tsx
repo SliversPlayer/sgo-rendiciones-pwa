@@ -3,6 +3,7 @@ import { PasswordChangeGate } from './components/PasswordChangeGate';
 import { useCatalogosBootstrap } from './hooks/useCatalogos';
 import { useAuth } from './hooks/useAuth';
 import { useAutoSync } from './hooks/useAutoSync';
+import { SyncStatusProvider } from './hooks/useSyncStatus';
 import { AdminPage } from './pages/AdminPage';
 import { AdminRendicionDetallePage } from './pages/AdminRendicionDetallePage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -20,12 +21,26 @@ function LoadingShell({ message }: { message: string }) {
   );
 }
 
+function ProtectedContent({ catalogosWarning }: { catalogosWarning?: string | null }) {
+  useAutoSync();
+
+  return (
+    <>
+      {catalogosWarning ? (
+        <div className="app-shell">
+          <p className="notice">{catalogosWarning}</p>
+        </div>
+      ) : null}
+      <Outlet />
+    </>
+  );
+}
+
 function ProtectedLayout() {
   const { currentUser, loading, userProfile } = useAuth();
   const catalogos = useCatalogosBootstrap({
     enabled: Boolean(currentUser && !userProfile?.mustChangePassword && userProfile?.activo !== false),
   });
-  useAutoSync();
 
   if (loading) {
     return <LoadingShell message="Cargando sesion..." />;
@@ -55,14 +70,9 @@ function ProtectedLayout() {
   }
 
   return (
-    <>
-      {catalogos.warning ? (
-        <div className="app-shell">
-          <p className="notice">{catalogos.warning}</p>
-        </div>
-      ) : null}
-      <Outlet />
-    </>
+    <SyncStatusProvider>
+      <ProtectedContent catalogosWarning={catalogos.warning} />
+    </SyncStatusProvider>
   );
 }
 

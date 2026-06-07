@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { isAdminUser, isSuperAdminUser } from '../utils/roles';
-import { ConnectionStatus } from './ConnectionStatus';
+import { SyncStatusPill } from './SyncStatusPill';
 
 interface AppTopbarProps {
   currentSection?: 'dashboard' | 'admin' | 'superadmin';
@@ -10,7 +9,6 @@ interface AppTopbarProps {
 
 export function AppTopbar({ currentSection = 'dashboard' }: AppTopbarProps) {
   const navigate = useNavigate();
-  const isOnline = useOnlineStatus();
   const { userProfile, logout } = useAuth();
 
   return (
@@ -24,7 +22,7 @@ export function AppTopbar({ currentSection = 'dashboard' }: AppTopbarProps) {
       </button>
 
       <div className="topbar-actions">
-        <ConnectionStatus isOnline={isOnline} />
+        <SyncStatusPill />
         {isAdminUser(userProfile) ? (
           <button
             type="button"

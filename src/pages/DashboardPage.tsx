@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ChevronRight, CircleX, PencilLine, Send, type LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AppTopbar } from '../components/AppTopbar';
 import { RendicionCard } from '../components/RendicionCard';
@@ -6,7 +7,6 @@ import { RendicionForm } from '../components/RendicionForm';
 import { useAuth } from '../hooks/useAuth';
 import { useRendiciones } from '../hooks/useRendiciones';
 import type { Rendicion, RendicionEstado, RendicionFormData } from '../types/rendicion';
-import { formatCurrency } from '../utils/format';
 import { getEstadoLabel, isRendicionEditable } from '../utils/rendicionStatus';
 
 type ViewMode = 'list' | 'create' | 'edit';
@@ -19,6 +19,15 @@ const estadoOptions: EstadoFilter[] = [
   'APROBADA',
   'RECHAZADA',
 ];
+
+interface DashboardMetric {
+  estado: RendicionEstado;
+  label: string;
+  description: string;
+  value: number;
+  icon: LucideIcon;
+  tone: 'draft' | 'sent' | 'rejected';
+}
 
 function normalizeSearch(value: string): string {
   return value
@@ -78,6 +87,33 @@ export function DashboardPage() {
     setViewMode('list');
     setSelectedRendicion(null);
   };
+
+  const dashboardMetrics: DashboardMetric[] = [
+    {
+      estado: 'BORRADOR',
+      label: 'Borradores',
+      description: 'Rendiciones que aún no has enviado',
+      value: stats.totalBorradores,
+      icon: PencilLine,
+      tone: 'draft',
+    },
+    {
+      estado: 'ENVIADA',
+      label: 'Enviadas',
+      description: 'Rendiciones en revisión',
+      value: stats.totalEnviadas,
+      icon: Send,
+      tone: 'sent',
+    },
+    {
+      estado: 'RECHAZADA',
+      label: 'Rechazadas',
+      description: 'Rendiciones que requieren corrección',
+      value: stats.totalRechazadas,
+      icon: CircleX,
+      tone: 'rejected',
+    },
+  ];
 
   const handleCreate = async (data: RendicionFormData) => {
     await addRendicion(data);
@@ -150,31 +186,31 @@ export function DashboardPage() {
             </button>
           </div>
 
-          <div className="stats-grid" aria-label="Estadisticas de rendiciones">
-            <div className="stat-card">
-              <span>Total rendiciones</span>
-              <strong>{stats.totalRendiciones}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Borradores</span>
-              <strong>{stats.totalBorradores}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Enviadas</span>
-              <strong>{stats.totalEnviadas}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Aprobadas</span>
-              <strong>{stats.totalAprobadas}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Rechazadas</span>
-              <strong>{stats.totalRechazadas}</strong>
-            </div>
-            <div className="stat-card">
-              <span>Monto acumulado</span>
-              <strong>{formatCurrency(stats.montoTotalAcumulado)}</strong>
-            </div>
+          <div className="stats-grid dashboard-stats-grid" aria-label="Metricas operativas de rendiciones">
+            {dashboardMetrics.map((metric) => {
+              const Icon = metric.icon;
+              const isActive = estadoFilter === metric.estado;
+
+              return (
+                <button
+                  key={metric.estado}
+                  type="button"
+                  className={`stat-card dashboard-stat-card is-${metric.tone} ${isActive ? 'is-active' : ''}`}
+                  onClick={() => setEstadoFilter(metric.estado)}
+                  aria-pressed={isActive}
+                >
+                  <span className="dashboard-stat-icon" aria-hidden="true">
+                    <Icon />
+                  </span>
+                  <span className="dashboard-stat-copy">
+                    <span className="dashboard-stat-label">{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                    <span className="dashboard-stat-description">{metric.description}</span>
+                  </span>
+                  <ChevronRight className="dashboard-stat-chevron" aria-hidden="true" />
+                </button>
+              );
+            })}
           </div>
 
           <div className="filters-bar dashboard-filter-panel" aria-label="Filtros de rendiciones">

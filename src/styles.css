@@ -63,40 +63,41 @@ button {
   top: 0;
   z-index: 20;
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  margin: -8px -8px 16px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 8px;
+  margin: 0 0 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-  backdrop-filter: blur(14px);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06);
 }
 
 .brand-button {
   display: inline-flex;
   min-width: 0;
+  max-width: 100%;
   align-items: center;
-  gap: 10px;
-  border-radius: 8px;
-  padding: 6px;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 4px;
   background: transparent;
-  color: var(--color-text);
+  color: #111827;
   text-align: left;
   cursor: pointer;
 }
 
 .brand-mark {
   display: inline-grid;
-  width: 38px;
-  height: 38px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 8px;
-  background: var(--color-primary);
+  border-radius: 12px;
+  background: #2563eb;
   color: #ffffff;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 950;
 }
 
@@ -110,7 +111,7 @@ button {
 }
 
 .brand-button small {
-  color: var(--color-muted);
+  color: #6b7280;
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -118,25 +119,32 @@ button {
 .topbar-actions {
   display: flex;
   min-width: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .topbar-link {
-  min-height: 38px;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  padding: 0 12px;
   background: transparent;
-  color: var(--color-muted);
+  color: #4b5563;
   font-size: 0.9rem;
   font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .topbar-link-icon {
-  display: none;
+  display: block;
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
@@ -217,7 +225,7 @@ button {
   box-sizing: border-box;
   width: 168px;
   max-width: 100%;
-  height: 38px;
+  height: 44px;
   flex: 0 0 168px;
   align-items: center;
   justify-content: center;
@@ -2347,39 +2355,53 @@ button {
     padding: 8px 10px 80px;
   }
 
-  .dashboard-shell .app-topbar {
+  .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     margin: 0 0 20px;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 8px;
   }
 
-  .dashboard-shell .brand-button {
+  .brand-button {
     gap: 8px;
     padding: 4px;
   }
 
-  .dashboard-shell .brand-mark {
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
+  .brand-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
   }
 
-  .dashboard-shell .brand-button strong {
+  .brand-button strong {
     font-size: 0.98rem;
   }
 
-  .dashboard-shell .brand-button small {
+  .brand-button small {
     font-size: 0.76rem;
   }
 
-  .dashboard-shell .topbar-actions {
+  .topbar-actions {
     flex-wrap: nowrap;
     gap: 4px;
+    max-width: calc(100vw - 120px);
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  .dashboard-shell .sync-status-pill {
+  .topbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar-link {
+    min-height: 44px;
+    border-radius: 10px;
+    padding: 0 10px;
+    font-size: 0.86rem;
+  }
+
+  .sync-status-pill {
     width: 44px;
     height: 44px;
     flex: 0 0 44px;
@@ -2390,7 +2412,7 @@ button {
     box-shadow: none;
   }
 
-  .dashboard-shell .sync-status-pill span {
+  .sync-status-pill span {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2399,29 +2421,25 @@ button {
     white-space: nowrap;
   }
 
-  .dashboard-shell .sync-status-icon {
+  .sync-status-icon {
     width: 22px;
     height: 22px;
   }
 
-  .dashboard-shell .topbar-logout-button {
+  .topbar-logout-button {
     width: 44px;
     min-height: 44px;
     padding: 0;
     border-radius: 10px;
   }
 
-  .dashboard-shell .topbar-logout-button span {
+  .topbar-logout-button span {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
-  }
-
-  .dashboard-shell .topbar-link-icon {
-    display: block;
   }
 
   .dashboard-section {

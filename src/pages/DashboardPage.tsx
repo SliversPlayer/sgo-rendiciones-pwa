@@ -121,8 +121,8 @@ export function DashboardPage() {
   ];
 
   const handleCreate = async (data: RendicionFormData) => {
-    await addRendicion(data);
-    showList();
+    const rendicion = await addRendicion(data);
+    navigate(`/rendiciones/${rendicion.id}`);
   };
 
   const handleEdit = async (data: RendicionFormData) => {

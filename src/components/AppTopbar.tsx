@@ -46,8 +46,8 @@ export function AppTopbar({ currentSection = 'dashboard' }: AppTopbarProps) {
           type="button"
           className="topbar-link topbar-logout-button"
           onClick={() => void logout()}
-          aria-label="Cerrar sesion"
-          title="Cerrar sesion"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
         >
           <LogOut className="topbar-link-icon" aria-hidden="true" />
           <span>Salir</span>

@@ -164,6 +164,7 @@ export function useRendiciones() {
     }
 
     await loadRendiciones(false);
+    return rendicion;
   };
 
   const saveRendicion = async (rendicion: Rendicion, data: RendicionFormData) => {
